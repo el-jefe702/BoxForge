@@ -12,5 +12,6 @@ Thumbs.db
 # Temp / scratch files
 *.log
 *.tmp
+tunnel_url.txt
 dist/
 node_modules/
