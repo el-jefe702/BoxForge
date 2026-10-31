@@ -1,8 +1,8 @@
 /**
- * BoxForge Pro — Phase 1, Phase 2, Phase 3A & Phase 3B Main Controller
+ * BoxForge Pro — Phase 1, Phase 2, Phase 3A, Phase 3B & Phase 3C Main Controller
  * Connects Parametric Core, Living Hinge Calculator, Hardware Panel Cutout Studio,
  * 1-Minute Kerf Calibration Wizard Modal, Dogbone Reliefs, Assembly Witness Marks,
- * 3D Kinematic Fold Viewport, 2D Laser Sheet Canvas, and Dual-Mode LightBurn Exporter.
+ * 3D Kinematic Fold Viewport, 2D Laser Sheet Canvas, LightBurn Exporter, and AutoCAD DXF Exporter.
  */
 
 import { LASER_MACHINES, MATERIALS, FIT_PRESETS, TSLOT_HARDWARE } from './presets.js';
@@ -18,6 +18,7 @@ import {
   generateCleanSVG,
   downloadFile
 } from './exporters/exportEngine.js';
+import { generateProductionDXF } from './exporters/dxfExporter.js';
 
 class BoxForgeApp {
   constructor() {
@@ -42,6 +43,7 @@ class BoxForgeApp {
       kerfMode: 'baked',          // 'baked' | 'lightburn-layer'
       dogboneRelief: false,       // Phase 3B: Dogbone corner micro-reliefs
       assemblyMarks: true,        // Phase 3B: Layer C03 edge-matching witness marks
+      allowRotation: true,        // Phase 3C: 90-degree smart rotation nesting
 
       // Phase 2: Living Hinge parameters
       hingePattern: 'straight',
@@ -125,6 +127,7 @@ class BoxForgeApp {
       dimModeButtons: document.querySelectorAll('[data-dim-mode]'),
       chkDogbone: document.getElementById('chk-dogbone'),
       chkWitnessMarks: document.getElementById('chk-witness-marks'),
+      chkRotation: document.getElementById('chk-rotation'),
 
       inputWidth: document.getElementById('input-width'),
       valWidth: document.getElementById('val-width'),
@@ -203,6 +206,7 @@ class BoxForgeApp {
       // Export buttons & Wizard trigger
       btnOpenKerfWizard: document.getElementById('btn-open-kerf-wizard'),
       btnExportLbrn2: document.getElementById('btn-export-lbrn2'),
+      btnExportDxf: document.getElementById('btn-export-dxf'),
       btnExportSvg: document.getElementById('btn-export-svg'),
       btnExportComb: document.getElementById('btn-export-comb')
     };
@@ -343,6 +347,13 @@ class BoxForgeApp {
     if (this.el.chkWitnessMarks) {
       this.el.chkWitnessMarks.addEventListener('change', (e) => {
         this.state.assemblyMarks = Boolean(e.target.checked);
+        this.recompute(false);
+      });
+    }
+
+    if (this.el.chkRotation) {
+      this.el.chkRotation.addEventListener('change', (e) => {
+        this.state.allowRotation = Boolean(e.target.checked);
         this.recompute(false);
       });
     }
@@ -514,6 +525,15 @@ class BoxForgeApp {
       const fname = `BoxForge_${Math.round(outerW)}x${Math.round(outerD)}x${Math.round(outerH)}_${thickness}mm_${this.state.kerfMode}.lbrn2`;
       downloadFile(fname, xml, 'application/xml');
     });
+
+    if (this.el.btnExportDxf) {
+      this.el.btnExportDxf.addEventListener('click', () => {
+        const dxf = generateProductionDXF(this.currentModel, { kerfMode: this.state.kerfMode });
+        const { outerW, outerD, outerH } = this.currentModel.dimensions;
+        const fname = `BoxForge_${Math.round(outerW)}x${Math.round(outerD)}x${Math.round(outerH)}.dxf`;
+        downloadFile(fname, dxf, 'application/dxf');
+      });
+    }
 
     this.el.btnExportSvg.addEventListener('click', () => {
       const svg = generateCleanSVG(this.currentModel);
@@ -864,6 +884,7 @@ class BoxForgeApp {
       panelCutouts: this.state.panelCutouts,
       dogboneRelief: this.state.dogboneRelief,
       assemblyMarks: this.state.assemblyMarks,
+      allowRotation: this.state.allowRotation,
       bedWidth: machine.bedWidth,
       bedHeight: machine.bedHeight,
       partSpacing: this.state.partSpacing,

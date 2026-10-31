@@ -1,9 +1,10 @@
 """
-BoxForge Pro — Phase 1, Phase 2, Phase 3A & Phase 3B Automated Verification Suite
+BoxForge Pro — Phase 1, Phase 2, Phase 3A, Phase 3B & Phase 3C Automated Verification Suite
 Verifies DOM-to-Controller ID bindings, ES module export/import integrity,
 Living Hinge bend-stress physics invariants, Hardware Cutout templates,
 Dual-Mode .lbrn2 kerf export, 1-Minute Kerf Calibration Wizard,
-Dogbone Corner Micro-Reliefs, and Layer C03 Assembly Witness Marks.
+Dogbone Corner Micro-Reliefs, Layer C03 Assembly Witness Marks,
+Universal AutoCAD R12 DXF Exporter, and 90-degree Smart Rotation Nesting.
 """
 
 import math
@@ -27,6 +28,8 @@ def test_file_structure_and_dom_ids():
         "src/viewport/scene3D.js",
         "src/viewport/sheet2D.js",
         "src/exporters/exportEngine.js",
+        "src/exporters/dxfExporter.js",
+        "src/exporters/index.js",
         "src/main.js",
     ]:
         assert (ROOT / rel_path).exists(), f"Missing required module: {rel_path}"
@@ -35,7 +38,7 @@ def test_file_structure_and_dom_ids():
     wizard_ids = re.findall(r"getElementById\(['\"]([^'\"]+)['\"]\)", wizard_js)
     all_referenced_ids = set(referenced_ids + wizard_ids)
 
-    assert len(all_referenced_ids) >= 45, f"Expected >=45 bound DOM IDs, found {len(all_referenced_ids)}"
+    assert len(all_referenced_ids) >= 50, f"Expected >=50 bound DOM IDs, found {len(all_referenced_ids)}"
 
     missing = []
     for dom_id in all_referenced_ids:
@@ -133,19 +136,43 @@ def test_phase_3b_dogbones_and_witness_marks():
     main_js = (ROOT / "src" / "main.js").read_text(encoding="utf-8")
     index_html = (ROOT / "index.html").read_text(encoding="utf-8")
 
-    # Verify dogbone fillet function and parameters in parametricCore
     assert 'generateDogbonePoints' in core_js, "Missing generateDogbonePoints function"
     assert 'dogboneRelief' in core_js, "parametricCore must accept dogboneRelief option"
     assert 'assemblyMarks' in core_js, "parametricCore must accept assemblyMarks option"
     assert 'generateAssemblyWitnessMarks' in core_js, "Missing generateAssemblyWitnessMarks function"
 
-    # Verify checkboxes in index.html and main.js
     assert 'id="chk-dogbone"' in index_html, "Missing chk-dogbone in index.html"
     assert 'id="chk-witness-marks"' in index_html, "Missing chk-witness-marks in index.html"
     assert 'chkDogbone' in main_js
     assert 'chkWitnessMarks' in main_js
 
     print("[PASS] Phase 3B Dogbone Corner Reliefs and Layer C03 Assembly Witness Marks verified")
+
+
+def test_phase_3c_dxf_exporter_and_rotation_nesting():
+    dxf_js = (ROOT / "src" / "exporters" / "dxfExporter.js").read_text(encoding="utf-8")
+    core_js = (ROOT / "src" / "geometry" / "parametricCore.js").read_text(encoding="utf-8")
+    main_js = (ROOT / "src" / "main.js").read_text(encoding="utf-8")
+    index_html = (ROOT / "index.html").read_text(encoding="utf-8")
+
+    # Verify DXF exporter layer standards
+    assert 'generateProductionDXF' in dxf_js, "Missing generateProductionDXF export"
+    for layer_name in ['0_OUTER_CUT', '1_INNER_CUT', '2_LIVING_HINGE', '3_VECTOR_SCORE']:
+        assert layer_name in dxf_js, f"Missing layer {layer_name} in dxfExporter.js"
+
+    # Verify R12 ASCII version header
+    assert 'AC1009' in dxf_js, "DXF exporter must target AutoCAD R12 AC1009 standard"
+
+    # Verify rotation parameter in packPanelsOnBed
+    assert 'allowRotation' in core_js, "packPanelsOnBed must accept allowRotation option"
+
+    # Verify DXF export button and checkbox
+    assert 'id="btn-export-dxf"' in index_html, "Missing btn-export-dxf in index.html"
+    assert 'id="chk-rotation"' in index_html, "Missing chk-rotation in index.html"
+    assert 'btnExportDxf' in main_js
+    assert 'chkRotation' in main_js
+
+    print("[PASS] Phase 3C AutoCAD DXF Exporter (R12 ASCII) and 90-degree Rotation Nesting verified")
 
 
 if __name__ == "__main__":
@@ -155,4 +182,5 @@ if __name__ == "__main__":
     test_living_hinge_physics_and_cutout_templates()
     test_phase_3a_kerf_wizard_and_dual_lbrn_mode()
     test_phase_3b_dogbones_and_witness_marks()
-    print("ALL PHASE 1, PHASE 2, PHASE 3A & PHASE 3B VERIFICATION CHECKS PASSED.")
+    test_phase_3c_dxf_exporter_and_rotation_nesting()
+    print("ALL PHASE 1, PHASE 2, PHASE 3A, PHASE 3B & PHASE 3C VERIFICATION CHECKS PASSED.")

@@ -70,10 +70,10 @@
     {
       "id": "phase_3c_dxf_exporter_and_rotation_nesting",
       "title": "Phase 3C: Production AutoCAD R12 .DXF Exporter & 90-Degree Rotation Bin-Packing",
-      "status": "PENDING",
-      "targetFiles": [
+      "status": "DONE",
+      "files": [
         "src/exporters/dxfExporter.js",
-        "src/exporters/exportEngine.js",
+        "src/exporters/index.js",
         "src/geometry/parametricCore.js",
         "src/main.js",
         "index.html",

@@ -1,9 +1,9 @@
 /**
- * BoxForge Pro — Deterministic 2D/3D Parametric Enclosure Core (Phase 1, 2, 3A & 3B)
+ * BoxForge Pro — Deterministic 2D/3D Parametric Enclosure Core (Phase 1, 2, 3A, 3B & 3C)
  * Generates kerf-compensated panel contours, internal mortises, T-slot captive-nut joints,
  * egg-crate dividers, Living Hinge curved enclosures (Layer C02), Hardware Panel Cutouts (Layer C01/C03),
  * Dogbone Corner Micro-Reliefs, Layer C03 Assembly Witness Marks,
- * 3D kinematic transforms, and 2D flat-bed nesting layouts.
+ * 3D kinematic transforms, and 2D flat-bed nesting with smart 90-degree rotation.
  */
 
 import { TSLOT_HARDWARE } from '../presets.js';
@@ -34,12 +34,6 @@ export function computeFingerDistribution(totalEdgeLength, thickness, targetFing
 /**
  * Generate a 5-point 45-degree semicircular dogbone relief fillet
  * into the solid shoulder material at an inside corner.
- *
- * @param {number} x - Corner vertex x
- * @param {number} y - Corner vertex y
- * @param {number} dirX - Direction along edge into shoulder (-1 or +1)
- * @param {number} dirY - Direction into material (+1 is inward)
- * @param {number} radius - Dogbone radius (default 0.45mm)
  */
 function generateDogbonePoints(x, y, dirX, dirY, radius = 0.45) {
   const r = Math.max(0.2, radius);
@@ -325,7 +319,6 @@ function buildPanelOutline({ W, H, t, fingerWidth, edgesConfig, kerfDelta, isTSl
 
 /**
  * Build a side wall (LEFT or RIGHT) with a rounded living-hinge corner of radius R
- * at its top-back corner
  */
 function buildLivingHingeSideWallOutline({
   D, H, t, R, side, fingerWidth, kerfDelta, isTSlot, hardware, dogboneRelief
@@ -581,7 +574,7 @@ export function computePolygonLength(pts, closed = true) {
 }
 
 /**
- * Generate Layer C03 Assembly Witness Marks for matching mating edges
+ * Generate Layer C03 Assembly Witness Marks
  */
 function generateAssemblyWitnessMarks(panelId, W, H, hasTop = true, isLivingHinge = false) {
   const marks = [];
@@ -640,7 +633,7 @@ function generateAssemblyWitnessMarks(panelId, W, H, hasTop = true, isLivingHing
 }
 
 /**
- * Main Parametric Box Generator (Phase 1, 2, 3A & 3B)
+ * Main Parametric Box Generator (Phase 1, 2, 3A, 3B & 3C)
  */
 export function generateParametricBox(params) {
   const {
@@ -669,6 +662,8 @@ export function generateParametricBox(params) {
     // Phase 3B Features
     dogboneRelief = false,
     assemblyMarks = true,
+    // Phase 3C Rotation Option
+    allowRotation = true,
     bedWidth = 600,
     bedHeight = 400,
     partSpacing = 5,
@@ -1059,7 +1054,6 @@ export function generateParametricBox(params) {
       })
     );
   } else {
-    // RIGID BACK, LEFT, RIGHT, TOP PANELS
     panels.push(
       createPanelRecord({
         id: 'back',
@@ -1340,8 +1334,8 @@ export function generateParametricBox(params) {
     });
   });
 
-  // 8. 2D LASER BED AUTO-NESTING
-  const nesting = packPanelsOnBed(panels, bedWidth, bedHeight, partSpacing);
+  // 8. 2D LASER BED AUTO-NESTING WITH ROTATION (Phase 3C)
+  const nesting = packPanelsOnBed(panels, bedWidth, bedHeight, partSpacing, allowRotation);
 
   // 9. MANUFACTURING TELEMETRY
   const totalCutLengthMm = panels.reduce((acc, p) => acc + p.cutLengthMm, 0);
@@ -1374,6 +1368,7 @@ export function generateParametricBox(params) {
       cutoutCount: panelCutouts.length,
       dogboneRelief,
       assemblyMarks,
+      allowRotation,
       hardwareSpec: isTSlot ? hardware.label : 'None (Self-locking Finger Joints)',
       materialUtilizationPct: nesting.utilizationPct,
       fitsOnBed: nesting.fitsOnBed
@@ -1382,9 +1377,10 @@ export function generateParametricBox(params) {
 }
 
 /**
- * Shelf First-Fit Decreasing (FFD) 2D Nesting Engine
+ * Shelf First-Fit Decreasing (FFD) 2D Nesting Engine with 90-degree Rotation
+ * If allowRotation is true, panels that fit better upright are automatically rotated 90 degrees.
  */
-export function packPanelsOnBed(panels, bedWidth, bedHeight, spacing = 5) {
+export function packPanelsOnBed(panels, bedWidth, bedHeight, spacing = 5, allowRotation = true) {
   const margin = Math.max(4, spacing);
   let cursorX = margin;
   let cursorY = margin;
@@ -1397,8 +1393,21 @@ export function packPanelsOnBed(panels, bedWidth, bedHeight, spacing = 5) {
   const placements = [];
 
   for (const panel of panels) {
-    const pw = panel.width;
-    const ph = panel.height;
+    let pw = panel.width;
+    let ph = panel.height;
+    let rotated = false;
+
+    // Check if 90-degree rotation prevents shelf overflow or fits bed height better
+    if (allowRotation && !panel.livingHingeMeta) {
+      const wouldOverflowNormally = (cursorX + pw + margin > bedWidth);
+      const wouldFitIfRotated = (cursorX + ph + margin <= bedWidth) && (cursorY + pw + margin <= bedHeight);
+      if (wouldOverflowNormally && wouldFitIfRotated) {
+        rotated = true;
+        pw = panel.height;
+        ph = panel.width;
+      }
+    }
+
     totalPanelArea += pw * ph;
 
     if (cursorX + pw + margin > bedWidth && cursorX > margin) {
@@ -1418,10 +1427,11 @@ export function packPanelsOnBed(panels, bedWidth, bedHeight, spacing = 5) {
       y,
       width: pw,
       height: ph,
+      rotated,
       overflow
     });
 
-    panel.bedPosition = { x, y, overflow };
+    panel.bedPosition = { x, y, width: pw, height: ph, rotated, overflow };
 
     cursorX += pw + spacing;
     shelfHeight = Math.max(shelfHeight, ph);
@@ -1438,6 +1448,7 @@ export function packPanelsOnBed(panels, bedWidth, bedHeight, spacing = 5) {
     bedWidth,
     bedHeight,
     spacing,
+    allowRotation,
     placements,
     boundingWidth: maxUsedX,
     boundingHeight: maxUsedY,

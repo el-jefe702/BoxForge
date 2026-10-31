@@ -53,7 +53,7 @@
         <div class="flex items-center gap-2">
           <span class="font-bold tracking-tight text-white text-sm">BoxForge Pro</span>
           <span class="text-[10px] uppercase tracking-wider font-mono font-semibold px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-            Phase 3B: Dogbones &amp; Assembly Marks
+            Phase 3C: DXF Export &amp; Rotation Nesting
           </span>
         </div>
         <p class="text-[11px] text-slate-400 hidden sm:block">
@@ -86,6 +86,11 @@
         class="px-2.5 py-1.5 rounded-md text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5">
         <span>Test Comb</span>
         <span class="font-mono text-[10px] opacity-80">.lbrn2</span>
+      </button>
+
+      <button id="btn-export-dxf" title="Export Production AutoCAD R12/2000 .DXF with 4 Standard Layers"
+        class="px-2.5 py-1.5 rounded-md text-xs font-medium bg-slate-800 hover:bg-slate-700 text-sky-300 border border-sky-500/30 transition flex items-center gap-1.5">
+        <span>Export .DXF</span>
       </button>
 
       <button id="btn-export-svg"
@@ -179,7 +184,7 @@
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="block text-[11px] font-medium text-slate-300 mb-1">Enclosure Style</label>
-            <select id="select-box-style" class="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-100">
+            <select id="select-box-style" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-100">
               <option value="living-hinge" selected>Living-Hinge Curved Lid</option>
               <option value="closed">6-Sided Closed Box</option>
               <option value="open">5-Sided Open Bin</option>
@@ -188,7 +193,7 @@
           </div>
           <div>
             <label class="block text-[11px] font-medium text-slate-300 mb-1">Joinery System</label>
-            <select id="select-joint-type" class="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-100">
+            <select id="select-joint-type" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-100">
               <option value="finger" selected>Finger Joints</option>
               <option value="tslot">T-Slot + Captive Nut</option>
             </select>
@@ -200,15 +205,19 @@
           <select id="select-hardware" class="w-full bg-slate-900 border border-amber-500/40 rounded px-2.5 py-1.5 text-xs text-slate-100"></select>
         </div>
 
-        <!-- Phase 3B: Dogbones & Assembly Marks Checkboxes -->
-        <div class="grid grid-cols-2 gap-2 pt-1">
-          <label class="flex items-center gap-2 cursor-pointer bg-slate-900/80 p-2 rounded border border-slate-800 hover:border-slate-700">
+        <!-- Phase 3B: Dogbones, Assembly Marks & 90-deg Rotation -->
+        <div class="grid grid-cols-3 gap-1.5 pt-1">
+          <label class="flex items-center gap-1.5 cursor-pointer bg-slate-900/80 p-2 rounded border border-slate-800 hover:border-slate-700">
             <input id="chk-dogbone" type="checkbox" class="rounded bg-slate-950 border-slate-700 text-sky-500 focus:ring-0" />
-            <span class="text-[11px] text-slate-300 font-medium select-none">Dogbone Reliefs</span>
+            <span class="text-[10px] text-slate-300 font-medium select-none">Dogbones</span>
           </label>
-          <label class="flex items-center gap-2 cursor-pointer bg-slate-900/80 p-2 rounded border border-slate-800 hover:border-slate-700">
+          <label class="flex items-center gap-1.5 cursor-pointer bg-slate-900/80 p-2 rounded border border-slate-800 hover:border-slate-700">
             <input id="chk-witness-marks" type="checkbox" checked class="rounded bg-slate-950 border-slate-700 text-sky-500 focus:ring-0" />
-            <span class="text-[11px] text-slate-300 font-medium select-none">Assembly Marks</span>
+            <span class="text-[10px] text-slate-300 font-medium select-none">Witness Marks</span>
+          </label>
+          <label class="flex items-center gap-1.5 cursor-pointer bg-slate-900/80 p-2 rounded border border-slate-800 hover:border-slate-700">
+            <input id="chk-rotation" type="checkbox" checked class="rounded bg-slate-950 border-slate-700 text-sky-500 focus:ring-0" />
+            <span class="text-[10px] text-slate-300 font-medium select-none">90° Nest</span>
           </label>
         </div>
 
