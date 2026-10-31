@@ -1,0 +1,16 @@
+# Python & test cache
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# OS & Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Temp / scratch files
+*.log
+*.tmp
+dist/
+node_modules/

@@ -1,0 +1,106 @@
+{
+  "project": "BoxForge Pro (Parametric Laser Enclosures & Living Hinges)",
+  "lastUpdated": "2026-10-31",
+  "environment": {
+    "os": "windows",
+    "shell": "powershell",
+    "workingDirectory": "c:\\Users\\El Jefe\\Desktop\\BoxForge",
+    "nodeInstalled": false,
+    "pythonInstalled": true,
+    "pythonCommand": "python",
+    "devServerCommand": "python -m http.server 8080",
+    "verificationCommand": "python tests/verify_phase1.py",
+    "architecture": "Zero-build Native ES Modules (index.html + importmap for Three.js 0.169.0 + Tailwind CDN)"
+  },
+  "checkpoints": [
+    {
+      "id": "phase_1_parametric_core_and_3d_fold",
+      "title": "Phase 1: Parametric Core & 3D Fold Viewport",
+      "status": "DONE",
+      "files": [
+        "index.html",
+        "src/presets.js",
+        "src/geometry/parametricCore.js",
+        "src/viewport/scene3D.js",
+        "src/viewport/sheet2D.js",
+        "src/exporters/exportEngine.js",
+        "src/main.js",
+        "tests/verify_phase1.py"
+      ]
+    },
+    {
+      "id": "phase_2_living_hinges_and_cutouts",
+      "title": "Phase 2: Living Hinges (Layer C02) & Hardware Cutout Studio (Layer C01/C03)",
+      "status": "DONE",
+      "files": [
+        "src/geometry/livingHinge.js",
+        "src/geometry/cutoutLibrary.js",
+        "src/geometry/parametricCore.js",
+        "src/viewport/scene3D.js",
+        "src/viewport/sheet2D.js",
+        "src/exporters/exportEngine.js",
+        "src/main.js",
+        "index.html",
+        "tests/verify_phase1.py"
+      ]
+    },
+    {
+      "id": "phase_3a_kerf_calibration_wizard",
+      "title": "Phase 3A: Interactive 1-Minute Kerf Calibration Wizard Modal & Dual .lbrn2 Kerf Mode",
+      "status": "PENDING",
+      "targetFiles": [
+        "src/ui/kerfWizardModal.js",
+        "src/exporters/exportEngine.js",
+        "src/main.js",
+        "index.html",
+        "tests/verify_phase1.py"
+      ]
+    },
+    {
+      "id": "phase_3b_dogbones_and_witness_marks",
+      "title": "Phase 3B: Dogbone Corner Reliefs & Layer C03 Edge-Matching Witness Marks",
+      "status": "PENDING",
+      "targetFiles": [
+        "src/geometry/parametricCore.js",
+        "src/main.js",
+        "index.html",
+        "tests/verify_phase1.py"
+      ]
+    },
+    {
+      "id": "phase_3c_dxf_exporter_and_rotation_nesting",
+      "title": "Phase 3C: Production AutoCAD R12 .DXF Exporter & 90-Degree Rotation Bin-Packing",
+      "status": "PENDING",
+      "targetFiles": [
+        "src/exporters/dxfExporter.js",
+        "src/exporters/exportEngine.js",
+        "src/geometry/parametricCore.js",
+        "src/main.js",
+        "index.html",
+        "tests/verify_phase1.py"
+      ]
+    },
+    {
+      "id": "phase_4a_persistence_and_share_urls",
+      "title": "Phase 4A: URL Hash Permalinks, .boxforge.json Save/Load & Custom Shop Preset Manager",
+      "status": "PENDING",
+      "targetFiles": [
+        "src/storage/projectStore.js",
+        "src/main.js",
+        "index.html",
+        "tests/verify_phase1.py"
+      ]
+    },
+    {
+      "id": "phase_4b_pro_tier_and_saas_polish",
+      "title": "Phase 4B: Pro Tier Subscription Modal, Shop Stamp Engraving & SaaS Polish",
+      "status": "PENDING",
+      "targetFiles": [
+        "src/ui/proUpgradeModal.js",
+        "src/main.js",
+        "index.html",
+        "tests/verify_phase1.py"
+      ]
+    }
+  ]
+}
