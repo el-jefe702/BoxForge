@@ -53,7 +53,7 @@
         <div class="flex items-center gap-2">
           <span class="font-bold tracking-tight text-white text-sm">BoxForge Pro</span>
           <span class="text-[10px] uppercase tracking-wider font-mono font-semibold px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-            Phase 3C: DXF Export &amp; Rotation Nesting
+            Phase 4A: Share URLs &amp; Persistence
           </span>
         </div>
         <p class="text-[11px] text-slate-400 hidden sm:block">
@@ -75,17 +75,33 @@
       </button>
     </div>
 
-    <!-- Right Export Toolbar -->
+    <!-- Right Export Toolbar & Project Actions -->
     <div class="flex items-center gap-2">
+      <button id="btn-open-pro-upgrade" title="Upgrade / Manage BoxForge Pro Commercial Tier"
+        class="px-2.5 py-1.5 rounded-md text-xs font-semibold bg-gradient-to-r from-emerald-500/20 to-teal-500/20 hover:from-emerald-500/30 hover:to-teal-500/30 text-emerald-300 border border-emerald-500/40 transition flex items-center gap-1.5 shadow-sm">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span id="pro-badge">PRO ACTIVE</span>
+      </button>
+
+      <button id="btn-share-url" title="Copy Shareable Permalinks URL with Full 3D Design State"
+        class="px-2.5 py-1.5 rounded-md text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5">
+        <span>🔗 Share</span>
+      </button>
+
+      <button id="btn-save-json" title="Save .boxforge.json Project File to Disk"
+        class="px-2.5 py-1.5 rounded-md text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5">
+        <span>Save .JSON</span>
+      </button>
+
+      <button id="btn-load-json" title="Open .boxforge.json Project File"
+        class="px-2.5 py-1.5 rounded-md text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5">
+        <span>Load</span>
+      </button>
+      <input id="input-file-json" type="file" accept=".json" class="hidden" />
+
       <button id="btn-open-kerf-wizard" title="Open 1-Minute Kerf Calibration Wizard &amp; Comb Simulator"
         class="px-2.5 py-1.5 rounded-md text-xs font-medium bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 transition flex items-center gap-1.5 shadow-sm">
         <span>⚡ Kerf Wizard</span>
-      </button>
-
-      <button id="btn-export-comb" title="Download 1-Minute Kerf Calibration Test Comb (.lbrn2)"
-        class="px-2.5 py-1.5 rounded-md text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5">
-        <span>Test Comb</span>
-        <span class="font-mono text-[10px] opacity-80">.lbrn2</span>
       </button>
 
       <button id="btn-export-dxf" title="Export Production AutoCAD R12/2000 .DXF with 4 Standard Layers"
@@ -95,7 +111,7 @@
 
       <button id="btn-export-svg"
         class="px-2.5 py-1.5 rounded-md text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
-        Export .SVG
+        .SVG
       </button>
 
       <button id="btn-export-lbrn2"
@@ -184,7 +200,7 @@
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="block text-[11px] font-medium text-slate-300 mb-1">Enclosure Style</label>
-            <select id="select-box-style" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-100">
+            <select id="select-box-style" class="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-100">
               <option value="living-hinge" selected>Living-Hinge Curved Lid</option>
               <option value="closed">6-Sided Closed Box</option>
               <option value="open">5-Sided Open Bin</option>
@@ -193,7 +209,7 @@
           </div>
           <div>
             <label class="block text-[11px] font-medium text-slate-300 mb-1">Joinery System</label>
-            <select id="select-joint-type" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-100">
+            <select id="select-joint-type" class="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-100">
               <option value="finger" selected>Finger Joints</option>
               <option value="tslot">T-Slot + Captive Nut</option>
             </select>
@@ -219,6 +235,16 @@
             <input id="chk-rotation" type="checkbox" checked class="rounded bg-slate-950 border-slate-700 text-sky-500 focus:ring-0" />
             <span class="text-[10px] text-slate-300 font-medium select-none">90° Nest</span>
           </label>
+        </div>
+
+        <!-- Phase 4B: Custom Shop / Part Vector Stamp -->
+        <div class="space-y-1 pt-0.5">
+          <div class="flex items-center justify-between">
+            <label class="text-[11px] font-medium text-slate-300">Shop Vector Engrave Stamp</label>
+            <span class="text-[9px] font-mono text-emerald-400">Layer C03</span>
+          </div>
+          <input id="input-shop-stamp" type="text" placeholder="e.g. FABRICATED BY BOXFORGE • 2026" maxlength="40"
+            class="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500" />
         </div>
 
         <div class="space-y-2 pt-0.5">
@@ -553,6 +579,88 @@
         <button id="btn-wizard-apply"
           class="px-4 py-1.5 rounded text-xs font-bold bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 shadow-md shadow-amber-500/20 transition">
           Apply &amp; Save Profile
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 4B: BOXFORGE PRO UPGRADE & COMMERCIAL SAAS MODAL -->
+  <div id="modal-pro-upgrade" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+    <div class="bg-slate-900 border border-slate-700/80 rounded-xl shadow-2xl max-w-2xl w-full p-6 space-y-5 text-slate-100">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-2">
+          <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-500/20 text-sky-400 border border-sky-500/30 uppercase tracking-wider">BoxForge Pro</span>
+          <h3 class="text-sm font-bold tracking-tight text-white">Commercial Tier &amp; License Settings</h3>
+        </div>
+        <button id="btn-pro-close" class="text-slate-400 hover:text-white text-lg font-mono leading-none">&times;</button>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <!-- Tier 1: Hobbyist -->
+        <div class="bg-slate-950/60 border border-slate-800 rounded-lg p-4 space-y-2.5 flex flex-col justify-between">
+          <div>
+            <div class="text-xs font-bold text-slate-300 uppercase tracking-wider">Hobbyist</div>
+            <div class="text-lg font-extrabold text-white mt-1">$0 <span class="text-xs font-normal text-slate-400">/ forever</span></div>
+            <ul class="text-[11px] text-slate-400 space-y-1.5 mt-3">
+              <li>✓ 3D Fold &amp; Explode Viewport</li>
+              <li>✓ Basic Finger Joint Enclosures</li>
+              <li>✓ 2D SVG &amp; Test Comb Export</li>
+            </ul>
+          </div>
+          <div class="pt-2">
+            <span class="block text-center text-[10px] text-slate-500 font-mono py-1">Community Standard</span>
+          </div>
+        </div>
+
+        <!-- Tier 2: Shop Pro -->
+        <div class="bg-sky-950/30 border border-sky-500/40 rounded-lg p-4 space-y-2.5 flex flex-col justify-between relative shadow-lg shadow-sky-950/50">
+          <span class="absolute -top-2.5 right-3 bg-sky-500 text-slate-950 text-[9px] font-extrabold px-1.5 py-0.5 rounded shadow">MOST POPULAR</span>
+          <div>
+            <div class="text-xs font-bold text-sky-400 uppercase tracking-wider">Shop Pro</div>
+            <div class="text-lg font-extrabold text-white mt-1">$19 <span class="text-xs font-normal text-slate-400">/ mo</span></div>
+            <ul class="text-[11px] text-slate-300 space-y-1.5 mt-3">
+              <li>✓ Unlimited .lbrn2 &amp; AutoCAD .DXF</li>
+              <li>✓ All Living Hinge Stress Patterns</li>
+              <li>✓ 11 Fastener &amp; Hardware Cutouts</li>
+              <li>✓ Custom Shop Logo Engrave Stamp</li>
+              <li>✓ Dogbone Reliefs &amp; Assembly Marks</li>
+            </ul>
+          </div>
+          <div class="pt-2">
+            <button class="w-full py-1.5 rounded bg-sky-500 hover:bg-sky-400 text-slate-950 text-xs font-bold transition">Subscribe Shop Pro</button>
+          </div>
+        </div>
+
+        <!-- Tier 3: Makerspace Lab -->
+        <div class="bg-slate-950/60 border border-slate-800 rounded-lg p-4 space-y-2.5 flex flex-col justify-between">
+          <div>
+            <div class="text-xs font-bold text-teal-400 uppercase tracking-wider">Makerspace Lab</div>
+            <div class="text-lg font-extrabold text-white mt-1">$49 <span class="text-xs font-normal text-slate-400">/ mo</span></div>
+            <ul class="text-[11px] text-slate-400 space-y-1.5 mt-3">
+              <li>✓ 5 Seats Multi-Operator License</li>
+              <li>✓ Shared Cloud Kerf Calibration</li>
+              <li>✓ CNC Router Dogbone Toolpaths</li>
+              <li>✓ Direct Machine G-Code Drivers</li>
+            </ul>
+          </div>
+          <div class="pt-2">
+            <button class="w-full py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition">Contact Enterprise</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Developer Demo License Switcher -->
+      <div class="bg-slate-950/80 border border-slate-800 rounded-lg p-3.5 flex items-center justify-between">
+        <div class="space-y-0.5">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold text-slate-200">Evaluation Mode: Instant Pro License Switch</span>
+            <span id="pro-license-status" class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">PRO ACTIVE</span>
+          </div>
+          <p class="text-[11px] text-slate-400">Toggle active license state locally in browser to test free vs commercial capability gates.</p>
+        </div>
+        <button id="btn-toggle-demo-license"
+          class="px-3.5 py-1.5 rounded text-xs font-semibold bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 transition shrink-0">
+          Toggle License
         </button>
       </div>
     </div>

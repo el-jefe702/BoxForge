@@ -12,6 +12,13 @@ import { generateParametricBox } from './geometry/parametricCore.js';
 import { BoxScene3D } from './viewport/scene3D.js';
 import { LaserSheet2D } from './viewport/sheet2D.js';
 import { KerfWizardModal } from './ui/kerfWizardModal.js';
+import { ProUpgradeModal } from './ui/proUpgradeModal.js';
+import {
+  serializeStateToHash,
+  deserializeStateFromHash,
+  exportProjectJson,
+  importProjectJson
+} from './storage/projectStore.js';
 import {
   generateLightBurnLbrn2,
   generateKerfCalibrationCombLbrn2,
@@ -44,6 +51,7 @@ class BoxForgeApp {
       dogboneRelief: false,       // Phase 3B: Dogbone corner micro-reliefs
       assemblyMarks: true,        // Phase 3B: Layer C03 edge-matching witness marks
       allowRotation: true,        // Phase 3C: 90-degree smart rotation nesting
+      shopStamp: '',              // Phase 4B: Custom shop stamp scored on bottom panel
 
       // Phase 2: Living Hinge parameters
       hingePattern: 'straight',
@@ -104,8 +112,14 @@ class BoxForgeApp {
       playDirection: -1
     };
 
+    const restored = deserializeStateFromHash();
+    if (restored) {
+      Object.assign(this.state, restored);
+    }
+
     this._initDOMRefs();
     this._populateSelectPresets();
+    this._syncInputsFromState();
     this._initViewports();
     this._initKerfWizard();
     this._bindEvents();
@@ -128,6 +142,7 @@ class BoxForgeApp {
       chkDogbone: document.getElementById('chk-dogbone'),
       chkWitnessMarks: document.getElementById('chk-witness-marks'),
       chkRotation: document.getElementById('chk-rotation'),
+      inputShopStamp: document.getElementById('input-shop-stamp'),
 
       inputWidth: document.getElementById('input-width'),
       valWidth: document.getElementById('val-width'),
@@ -203,12 +218,17 @@ class BoxForgeApp {
       selectedPartTitle: document.getElementById('selected-part-title'),
       selectedPartMeta: document.getElementById('selected-part-meta'),
 
+      // Phase 4A & 4B Persistence & Project Actions
+      btnShareUrl: document.getElementById('btn-share-url'),
+      btnSaveJson: document.getElementById('btn-save-json'),
+      btnLoadJson: document.getElementById('btn-load-json'),
+      inputFileJson: document.getElementById('input-file-json'),
+
       // Export buttons & Wizard trigger
       btnOpenKerfWizard: document.getElementById('btn-open-kerf-wizard'),
       btnExportLbrn2: document.getElementById('btn-export-lbrn2'),
       btnExportDxf: document.getElementById('btn-export-dxf'),
-      btnExportSvg: document.getElementById('btn-export-svg'),
-      btnExportComb: document.getElementById('btn-export-comb')
+      btnExportSvg: document.getElementById('btn-export-svg')
     };
   }
 
@@ -269,6 +289,57 @@ class BoxForgeApp {
         downloadFile(`BoxForge_Kerf_Calibration_Comb_${this.state.thickness}mm.lbrn2`, xml, 'application/xml');
       }
     });
+
+    this.proModal = new ProUpgradeModal();
+  }
+
+  _syncInputsFromState() {
+    if (this.el.machineSelect) this.el.machineSelect.value = this.state.machineId;
+    if (this.el.materialSelect) this.el.materialSelect.value = this.state.materialId;
+    if (this.el.fitSelect) this.el.fitSelect.value = this.state.fitPresetId;
+    if (this.el.selectKerfMode) this.el.selectKerfMode.value = this.state.kerfMode || 'baked';
+    if (this.el.boxStyleSelect) this.el.boxStyleSelect.value = this.state.boxStyle;
+    if (this.el.jointTypeSelect) this.el.jointTypeSelect.value = this.state.jointType;
+    if (this.el.hardwareSelect) this.el.hardwareSelect.value = this.state.hardwareId;
+    if (this.el.hardwareRow) this.el.hardwareRow.classList.toggle('hidden', this.state.jointType !== 'tslot');
+
+    if (this.el.inputWidth) this.el.inputWidth.value = this.state.width;
+    if (this.el.valWidth) this.el.valWidth.textContent = `${this.state.width} mm`;
+    if (this.el.inputDepth) this.el.inputDepth.value = this.state.depth;
+    if (this.el.valDepth) this.el.valDepth.textContent = `${this.state.depth} mm`;
+    if (this.el.inputHeight) this.el.inputHeight.value = this.state.height;
+    if (this.el.valHeight) this.el.valHeight.textContent = `${this.state.height} mm`;
+
+    if (this.el.inputThickness) this.el.inputThickness.value = this.state.thickness;
+    if (this.el.inputKerf) this.el.inputKerf.value = this.state.kerf;
+    if (this.el.inputInterference) this.el.inputInterference.value = this.state.fitInterference;
+    if (this.el.inputFingerWidth) this.el.inputFingerWidth.value = this.state.fingerWidth;
+    if (this.el.valFingerWidth) this.el.valFingerWidth.textContent = `${this.state.fingerWidth} mm`;
+
+    if (this.el.chkDogbone) this.el.chkDogbone.checked = Boolean(this.state.dogboneRelief);
+    if (this.el.chkWitnessMarks) this.el.chkWitnessMarks.checked = Boolean(this.state.assemblyMarks);
+    if (this.el.chkRotation) this.el.chkRotation.checked = Boolean(this.state.allowRotation);
+    if (this.el.inputShopStamp) this.el.inputShopStamp.value = this.state.shopStamp || '';
+
+    if (this.el.selectHingePattern) this.el.selectHingePattern.value = this.state.hingePattern || 'straight';
+    if (this.el.inputHingeRadius) this.el.inputHingeRadius.value = this.state.hingeRadius || 18;
+    if (this.el.valHingeRadius) this.el.valHingeRadius.textContent = `${this.state.hingeRadius || 18} mm`;
+    if (this.el.inputHingeSpacing) this.el.inputHingeSpacing.value = this.state.hingeColSpacing || 2.2;
+    if (this.el.valHingeSpacing) this.el.valHingeSpacing.textContent = `${this.state.hingeColSpacing || 2.2} mm`;
+
+    if (this.el.inputDivX) this.el.inputDivX.value = this.state.dividersX || 0;
+    if (this.el.valDivX) this.el.valDivX.textContent = String(this.state.dividersX || 0);
+    if (this.el.inputDivY) this.el.inputDivY.value = this.state.dividersY || 0;
+    if (this.el.valDivY) this.el.valDivY.textContent = String(this.state.dividersY || 0);
+
+    if (this.el.dimModeButtons) {
+      this.el.dimModeButtons.forEach(b => {
+        const active = b.dataset.dimMode === this.state.dimensionMode;
+        b.className = active
+          ? 'flex-1 py-1 px-2 text-xs font-semibold rounded bg-sky-500/20 text-sky-300 border border-sky-500/40'
+          : 'flex-1 py-1 px-2 text-xs font-medium rounded text-slate-400 hover:text-slate-200';
+      });
+    }
   }
 
   _onPanelSelected(panel, source) {
@@ -542,12 +613,86 @@ class BoxForgeApp {
       downloadFile(fname, svg, 'image/svg+xml');
     });
 
-    this.el.btnExportComb.addEventListener('click', () => {
-      const xml = generateKerfCalibrationCombLbrn2(
-        this._getCurrentMaterial(),
-        this._getCurrentMachine()
-      );
-      downloadFile(`BoxForge_Kerf_Calibration_Comb_${this.state.thickness}mm.lbrn2`, xml, 'application/xml');
+    // Phase 4A: Share URL Permalink
+    if (this.el.btnShareUrl) {
+      this.el.btnShareUrl.addEventListener('click', async () => {
+        const hash = serializeStateToHash(this.state);
+        window.location.hash = hash;
+        const fullUrl = window.location.href;
+        try {
+          await navigator.clipboard.writeText(fullUrl);
+          const origHtml = this.el.btnShareUrl.innerHTML;
+          this.el.btnShareUrl.innerHTML = '<span>✓ Copied!</span>';
+          setTimeout(() => {
+            if (this.el.btnShareUrl) this.el.btnShareUrl.innerHTML = origHtml;
+          }, 2000);
+        } catch {
+          prompt('Copy Shareable Design URL:', fullUrl);
+        }
+      });
+    }
+
+    // Phase 4A: Project JSON Export & Import
+    if (this.el.btnSaveJson) {
+      this.el.btnSaveJson.addEventListener('click', () => {
+        const json = exportProjectJson(this.state);
+        const { outerW, outerD, outerH } = this.currentModel.dimensions;
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+        const fname = `BoxForge_${Math.round(outerW)}x${Math.round(outerD)}x${Math.round(outerH)}_${timestamp}.boxforge.json`;
+        downloadFile(fname, json, 'application/json');
+      });
+    }
+
+    if (this.el.btnLoadJson && this.el.inputFileJson) {
+      this.el.btnLoadJson.addEventListener('click', () => {
+        this.el.inputFileJson.value = '';
+        this.el.inputFileJson.click();
+      });
+
+      this.el.inputFileJson.addEventListener('change', (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        importProjectJson(file, (err, loadedState) => {
+          if (err) {
+            alert('Failed to load BoxForge project file: ' + err.message);
+            return;
+          }
+          Object.assign(this.state, loadedState);
+          this._syncInputsFromState();
+          this.recompute(true);
+          this._renderCutoutList();
+        });
+      });
+    }
+
+    // Phase 4B: Custom Shop Stamp
+    if (this.el.inputShopStamp) {
+      this.el.inputShopStamp.addEventListener('input', (e) => {
+        this.state.shopStamp = e.target.value;
+        this.recompute(false);
+      });
+    }
+
+    // Phase 4B: Production SaaS Keyboard Shortcuts
+    window.addEventListener('keydown', (e) => {
+      if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        this._togglePlayFold();
+      } else if (e.code === 'KeyR') {
+        e.preventDefault();
+        this.scene3D.resetCamera('iso');
+      } else if (e.key === '1') {
+        this.setViewMode('split');
+      } else if (e.key === '2') {
+        this.setViewMode('3d');
+      } else if (e.key === '3') {
+        this.setViewMode('2d');
+      } else if (e.code === 'Escape') {
+        if (this.kerfWizard) this.kerfWizard.close();
+        if (this.proModal) this.proModal.close();
+      }
     });
   }
 
@@ -885,6 +1030,7 @@ class BoxForgeApp {
       dogboneRelief: this.state.dogboneRelief,
       assemblyMarks: this.state.assemblyMarks,
       allowRotation: this.state.allowRotation,
+      shopStamp: this.state.shopStamp || '',
       bedWidth: machine.bedWidth,
       bedHeight: machine.bedHeight,
       partSpacing: this.state.partSpacing,

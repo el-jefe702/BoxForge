@@ -18,6 +18,7 @@ def test_file_structure_and_dom_ids():
     index_html = (ROOT / "index.html").read_text(encoding="utf-8")
     main_js = (ROOT / "src" / "main.js").read_text(encoding="utf-8")
     wizard_js = (ROOT / "src" / "ui" / "kerfWizardModal.js").read_text(encoding="utf-8")
+    pro_js = (ROOT / "src" / "ui" / "proUpgradeModal.js").read_text(encoding="utf-8")
 
     for rel_path in [
         "src/presets.js",
@@ -25,6 +26,8 @@ def test_file_structure_and_dom_ids():
         "src/geometry/livingHinge.js",
         "src/geometry/cutoutLibrary.js",
         "src/ui/kerfWizardModal.js",
+        "src/ui/proUpgradeModal.js",
+        "src/storage/projectStore.js",
         "src/viewport/scene3D.js",
         "src/viewport/sheet2D.js",
         "src/exporters/exportEngine.js",
@@ -36,9 +39,10 @@ def test_file_structure_and_dom_ids():
 
     referenced_ids = re.findall(r"getElementById\(['\"]([^'\"]+)['\"]\)", main_js)
     wizard_ids = re.findall(r"getElementById\(['\"]([^'\"]+)['\"]\)", wizard_js)
-    all_referenced_ids = set(referenced_ids + wizard_ids)
+    pro_ids = re.findall(r"getElementById\(['\"]([^'\"]+)['\"]\)", pro_js)
+    all_referenced_ids = set(referenced_ids + wizard_ids + pro_ids)
 
-    assert len(all_referenced_ids) >= 50, f"Expected >=50 bound DOM IDs, found {len(all_referenced_ids)}"
+    assert len(all_referenced_ids) >= 55, f"Expected >=55 bound DOM IDs, found {len(all_referenced_ids)}"
 
     missing = []
     for dom_id in all_referenced_ids:
@@ -46,7 +50,7 @@ def test_file_structure_and_dom_ids():
             missing.append(dom_id)
 
     assert not missing, f"Missing DOM IDs in index.html: {missing}"
-    print(f"[PASS] All {len(all_referenced_ids)} DOM IDs in src/main.js & kerfWizardModal.js match index.html")
+    print(f"[PASS] All {len(all_referenced_ids)} DOM IDs in src/main.js, kerfWizardModal.js & proUpgradeModal.js match index.html")
 
 
 def test_finger_distribution_invariants():
@@ -175,6 +179,69 @@ def test_phase_3c_dxf_exporter_and_rotation_nesting():
     print("[PASS] Phase 3C AutoCAD DXF Exporter (R12 ASCII) and 90-degree Rotation Nesting verified")
 
 
+def test_phase_4a_persistence():
+    store_js = (ROOT / "src" / "storage" / "projectStore.js").read_text(encoding="utf-8")
+    main_js = (ROOT / "src" / "main.js").read_text(encoding="utf-8")
+    index_html = (ROOT / "index.html").read_text(encoding="utf-8")
+
+    # Verify projectStore.js exports
+    for fn_name in [
+        'serializeStateToHash',
+        'deserializeStateFromHash',
+        'exportProjectJson',
+        'importProjectJson',
+        'saveCustomMaterialPreset',
+        'loadCustomMaterialPresets'
+    ]:
+        assert f"export function {fn_name}" in store_js, f"Missing export {fn_name} in projectStore.js"
+
+    # Verify DOM buttons
+    for btn_id in ['btn-share-url', 'btn-save-json', 'btn-load-json', 'input-file-json']:
+        assert f'id="{btn_id}"' in index_html, f"Missing {btn_id} in index.html"
+        assert btn_id in main_js, f"Missing {btn_id} reference in main.js"
+
+    # Verify startup hash restoration
+    assert 'deserializeStateFromHash' in main_js, "main.js must restore state from hash on init"
+
+    print("[PASS] Phase 4A Project Persistence, Permalinks (#design=...) and JSON Import/Export verified")
+
+
+def test_phase_4b_saas_polish():
+    pro_js = (ROOT / "src" / "ui" / "proUpgradeModal.js").read_text(encoding="utf-8")
+    core_js = (ROOT / "src" / "geometry" / "parametricCore.js").read_text(encoding="utf-8")
+    main_js = (ROOT / "src" / "main.js").read_text(encoding="utf-8")
+    index_html = (ROOT / "index.html").read_text(encoding="utf-8")
+
+    # Verify ProUpgradeModal class and methods
+    assert 'class ProUpgradeModal' in pro_js
+    assert 'toggleLicense' in pro_js
+    assert 'isPro' in pro_js
+
+    # Verify Pro upgrade DOM elements
+    for dom_id in [
+        'modal-pro-upgrade',
+        'btn-open-pro-upgrade',
+        'btn-pro-close',
+        'pro-badge',
+        'btn-toggle-demo-license',
+        'pro-license-status',
+        'input-shop-stamp'
+    ]:
+        assert f'id="{dom_id}"' in index_html, f"Missing {dom_id} in index.html"
+
+    # Verify Custom Shop Stamp in parametricCore
+    assert 'shopStamp' in core_js, "parametricCore must accept shopStamp"
+    assert "type: 'shopStamp'" in core_js, "parametricCore must generate shopStamp score annotation"
+
+    # Verify Keyboard Shortcuts in main.js
+    assert 'keydown' in main_js
+    assert 'Space' in main_js
+    assert 'KeyR' in main_js
+    assert 'Escape' in main_js
+
+    print("[PASS] Phase 4B BoxForge Pro SaaS Tier, Custom Shop Stamp and Keyboard Shortcuts verified")
+
+
 if __name__ == "__main__":
     test_file_structure_and_dom_ids()
     test_finger_distribution_invariants()
@@ -183,4 +250,6 @@ if __name__ == "__main__":
     test_phase_3a_kerf_wizard_and_dual_lbrn_mode()
     test_phase_3b_dogbones_and_witness_marks()
     test_phase_3c_dxf_exporter_and_rotation_nesting()
-    print("ALL PHASE 1, PHASE 2, PHASE 3A, PHASE 3B & PHASE 3C VERIFICATION CHECKS PASSED.")
+    test_phase_4a_persistence()
+    test_phase_4b_saas_polish()
+    print("ALL PHASE 1, PHASE 2, PHASE 3A, PHASE 3B, PHASE 3C, PHASE 4A & PHASE 4B VERIFICATION CHECKS PASSED.")

@@ -83,8 +83,8 @@
     {
       "id": "phase_4a_persistence_and_share_urls",
       "title": "Phase 4A: URL Hash Permalinks, .boxforge.json Save/Load & Custom Shop Preset Manager",
-      "status": "PENDING",
-      "targetFiles": [
+      "status": "DONE",
+      "files": [
         "src/storage/projectStore.js",
         "src/main.js",
         "index.html",
@@ -94,9 +94,10 @@
     {
       "id": "phase_4b_pro_tier_and_saas_polish",
       "title": "Phase 4B: Pro Tier Subscription Modal, Shop Stamp Engraving & SaaS Polish",
-      "status": "PENDING",
-      "targetFiles": [
+      "status": "DONE",
+      "files": [
         "src/ui/proUpgradeModal.js",
+        "src/geometry/parametricCore.js",
         "src/main.js",
         "index.html",
         "tests/verify_phase1.py"

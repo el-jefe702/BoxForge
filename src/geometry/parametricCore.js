@@ -664,6 +664,8 @@ export function generateParametricBox(params) {
     assemblyMarks = true,
     // Phase 3C Rotation Option
     allowRotation = true,
+    // Phase 4B Custom Shop Stamp
+    shopStamp = '',
     bedWidth = 600,
     bedHeight = 400,
     partSpacing = 5,
@@ -796,6 +798,12 @@ export function generateParametricBox(params) {
           x: W * 0.5,
           y: livingHingeData ? livingHingeData.meta.straightBackH * 0.5 : H * 0.5
         },
+        ...(id === 'bottom' && shopStamp && shopStamp.trim() ? [{
+          type: 'shopStamp',
+          text: shopStamp.trim(),
+          x: W * 0.5,
+          y: H * 0.5 - 14
+        }] : []),
         ...scoreAnnotations,
         ...witnessMarks,
         ...userComp.scoreLabels
