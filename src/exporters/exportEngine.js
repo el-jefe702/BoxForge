@@ -79,9 +79,40 @@ export function generateLightBurnLbrn2(model, materialPreset, machinePreset, opt
 
   const shapesXml = [];
 
-  for (const panel of model.panels) {
-    const ox = panel.bedPosition?.x ?? 0;
-    const oy = panel.bedPosition?.y ?? 0;
+  const targetSheet = options.sheetIndex !== undefined && options.sheetIndex !== 'all'
+    ? Number(options.sheetIndex)
+    : null;
+
+  const totalSheets = model.nesting?.totalSheets || 1;
+  const bedWidth = machinePreset.bedWidth;
+  const bedHeight = machinePreset.bedHeight;
+
+  // Multi-Sheet Bed Boundary Guides (Layer C03)
+  if (targetSheet === null && totalSheets > 1) {
+    for (let s = 0; s < totalSheets; s++) {
+      const sheetOx = s * (bedWidth + 40);
+      const bedBorder = [
+        { x: sheetOx, y: 0 },
+        { x: sheetOx + bedWidth, y: 0 },
+        { x: sheetOx + bedWidth, y: bedHeight },
+        { x: sheetOx, y: bedHeight }
+      ];
+      shapesXml.push(buildLbrnPathShape(bedBorder, 0, 0, 3, true));
+      shapesXml.push(buildLbrnTextShape(`SHEET ${s + 1} OF ${totalSheets}`, sheetOx + 12, -8, 3, 5.0));
+    }
+  }
+
+  const panelsToExport = targetSheet !== null
+    ? model.panels.filter(p => (p.bedPosition?.sheetIndex ?? 0) === targetSheet)
+    : model.panels;
+
+  for (const panel of panelsToExport) {
+    const ox = targetSheet !== null
+      ? (panel.bedPosition?.x ?? 0)
+      : (panel.bedPosition?.globalX ?? panel.bedPosition?.x ?? 0);
+    const oy = targetSheet !== null
+      ? (panel.bedPosition?.y ?? 0)
+      : (panel.bedPosition?.globalY ?? panel.bedPosition?.y ?? 0);
 
     // 1. Score annotations & silkscreen frames (CutIndex = 3 -> Green Score Layer, Priority 1)
     for (const ann of panel.scoreAnnotations || []) {

@@ -99,9 +99,40 @@ export function generateProductionDXF(model, options = {}) {
     add(31, '0.0000');
   };
 
-  for (const panel of model.panels) {
-    const ox = panel.bedPosition?.x ?? 0;
-    const oy = panel.bedPosition?.y ?? 0;
+  const targetSheet = options.sheetIndex !== undefined && options.sheetIndex !== 'all'
+    ? Number(options.sheetIndex)
+    : null;
+
+  const totalSheets = model.nesting?.totalSheets || 1;
+  const bedWidth = model.nesting?.bedWidth || 600;
+  const bedHeight = model.nesting?.bedHeight || 400;
+
+  // Multi-Sheet Bed Boundary Guides (3_VECTOR_SCORE)
+  if (targetSheet === null && totalSheets > 1) {
+    for (let s = 0; s < totalSheets; s++) {
+      const sheetOx = s * (bedWidth + 40);
+      const bedBorder = [
+        { x: sheetOx, y: 0 },
+        { x: sheetOx + bedWidth, y: 0 },
+        { x: sheetOx + bedWidth, y: bedHeight },
+        { x: sheetOx, y: bedHeight }
+      ];
+      emitPolyline(bedBorder, 0, 0, '3_VECTOR_SCORE', true);
+      emitText(`SHEET ${s + 1} OF ${totalSheets}`, sheetOx + 12, -8, 5.0, '3_VECTOR_SCORE');
+    }
+  }
+
+  const panelsToExport = targetSheet !== null
+    ? model.panels.filter(p => (p.bedPosition?.sheetIndex ?? 0) === targetSheet)
+    : model.panels;
+
+  for (const panel of panelsToExport) {
+    const ox = targetSheet !== null
+      ? (panel.bedPosition?.x ?? 0)
+      : (panel.bedPosition?.globalX ?? panel.bedPosition?.x ?? 0);
+    const oy = targetSheet !== null
+      ? (panel.bedPosition?.y ?? 0)
+      : (panel.bedPosition?.globalY ?? panel.bedPosition?.y ?? 0);
 
     // Vector Score labels & silkscreens (3_VECTOR_SCORE)
     for (const ann of panel.scoreAnnotations || []) {

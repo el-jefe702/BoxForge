@@ -108,6 +108,8 @@ class BoxForgeApp {
       foldProgress: 0.90,
       explodeDistance: 0,
       lidOpenProgress: 0,
+      assemblyStep: 0,            // Phase 5B: 0=all, 1=base/dividers, 2=sides, 3=front/back, 4=lid
+      currentSheetIndex: 'all',   // Phase 5A: 'all' | 0 | 1 ...
       isPlayingFold: false,
       playDirection: -1
     };
@@ -223,6 +225,14 @@ class BoxForgeApp {
       btnSaveJson: document.getElementById('btn-save-json'),
       btnLoadJson: document.getElementById('btn-load-json'),
       inputFileJson: document.getElementById('input-file-json'),
+
+      // Phase 5A & 5B Multi-Sheet & Assembly Step refs
+      barSheetPagination: document.getElementById('bar-sheet-pagination'),
+      sheetTabsContainer: document.getElementById('sheet-tabs-container'),
+      valAssemblyStep: document.getElementById('val-assembly-step'),
+      btnAssemblyStepPrev: document.getElementById('btn-assembly-step-prev'),
+      btnAssemblyStepNext: document.getElementById('btn-assembly-step-next'),
+      selectAssemblyStep: document.getElementById('select-assembly-step'),
 
       // Export buttons & Wizard trigger
       btnOpenKerfWizard: document.getElementById('btn-open-kerf-wizard'),
@@ -544,6 +554,27 @@ class BoxForgeApp {
       this.el.valLid.textContent = `${Math.round((pct / 100) * 100)}°`;
       this.scene3D.setLidOpenProgress(this.state.lidOpenProgress);
     });
+
+    // Phase 5B: 3D Assembly Stepper bindings
+    if (this.el.selectAssemblyStep) {
+      this.el.selectAssemblyStep.addEventListener('change', (e) => {
+        this._setAssemblyStep(e.target.value);
+      });
+    }
+
+    if (this.el.btnAssemblyStepPrev) {
+      this.el.btnAssemblyStepPrev.addEventListener('click', () => {
+        const next = (this.state.assemblyStep + 4) % 5;
+        this._setAssemblyStep(next);
+      });
+    }
+
+    if (this.el.btnAssemblyStepNext) {
+      this.el.btnAssemblyStepNext.addEventListener('click', () => {
+        const next = (this.state.assemblyStep + 1) % 5;
+        this._setAssemblyStep(next);
+      });
+    }
 
     this.el.viewModeButtons.forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -1040,6 +1071,60 @@ class BoxForgeApp {
     this.scene3D.updateModel(this.currentModel, material);
     this.sheet2D.updateModel(this.currentModel, fit2D);
     this._updateTelemetryHUD();
+    this._renderSheetPaginationTabs();
+  }
+
+  _setAssemblyStep(stepIndex) {
+    this.state.assemblyStep = Math.max(0, Math.min(4, Number(stepIndex) || 0));
+    if (this.el.selectAssemblyStep) {
+      this.el.selectAssemblyStep.value = String(this.state.assemblyStep);
+    }
+    const stepLabels = [
+      'All Parts (Assembled)',
+      'Step 1: Base & Dividers',
+      'Step 2: Install Side Walls',
+      'Step 3: Install Front/Back',
+      'Step 4: Install Lid & Hinge'
+    ];
+    if (this.el.valAssemblyStep) {
+      this.el.valAssemblyStep.textContent = stepLabels[this.state.assemblyStep];
+    }
+    this.scene3D.setAssemblyStep(this.state.assemblyStep);
+  }
+
+  _renderSheetPaginationTabs() {
+    if (!this.el.sheetTabsContainer || !this.currentModel) return;
+    const { totalSheets = 1, sheets = [] } = this.currentModel.nesting;
+
+    let html = '';
+    const isAll = this.state.currentSheetIndex === 'all';
+    html += `<button data-sheet-tab="all" class="px-2 py-0.5 rounded text-[10px] font-semibold transition ${
+      isAll
+        ? 'bg-sky-500 text-slate-950 shadow-sm'
+        : 'bg-slate-800 text-slate-300 hover:text-white border border-slate-700'
+    }">All (${totalSheets})</button>`;
+
+    for (let i = 0; i < totalSheets; i++) {
+      const active = this.state.currentSheetIndex === i;
+      const sheetInfo = sheets[i];
+      const count = sheetInfo ? sheetInfo.panelCount : 0;
+      html += `<button data-sheet-tab="${i}" class="px-2 py-0.5 rounded text-[10px] font-semibold transition ${
+        active
+          ? 'bg-sky-500 text-slate-950 shadow-sm'
+          : 'bg-slate-800 text-slate-300 hover:text-white border border-slate-700'
+      }">Sheet ${i + 1}${count > 0 ? ` (${count})` : ''}</button>`;
+    }
+
+    this.el.sheetTabsContainer.innerHTML = html;
+
+    this.el.sheetTabsContainer.querySelectorAll('[data-sheet-tab]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const val = btn.dataset.sheetTab;
+        this.state.currentSheetIndex = val === 'all' ? 'all' : parseInt(val, 10);
+        this.sheet2D.setSheetIndex(this.state.currentSheetIndex);
+        this._renderSheetPaginationTabs();
+      });
+    });
   }
 
   _updateTelemetryHUD() {
@@ -1076,11 +1161,13 @@ class BoxForgeApp {
       }
     }
 
+    const totalSheets = this.currentModel.nesting.totalSheets || 1;
     if (fitsOnBed) {
-      this.el.hudBedStatus.textContent = `Fits ${Math.ceil(boundingWidth)}×${Math.ceil(boundingHeight)} mm on ${bedWidth}×${bedHeight} mm bed`;
+      const sheetMsg = totalSheets > 1 ? ` (${totalSheets} sheets paginated)` : '';
+      this.el.hudBedStatus.textContent = `Fits ${Math.ceil(boundingWidth)}×${Math.ceil(boundingHeight)} mm on ${bedWidth}×${bedHeight} mm bed${sheetMsg}`;
       this.el.hudBedStatus.className = 'text-xs font-mono text-emerald-400';
     } else {
-      this.el.hudBedStatus.textContent = `Exceeds ${bedWidth}×${bedHeight} mm bed (${Math.ceil(boundingWidth)}×${Math.ceil(boundingHeight)} mm)`;
+      this.el.hudBedStatus.textContent = `Part exceeds ${bedWidth}×${bedHeight} mm bed (${Math.ceil(boundingWidth)}×${Math.ceil(boundingHeight)} mm)`;
       this.el.hudBedStatus.className = 'text-xs font-mono text-rose-400';
     }
   }

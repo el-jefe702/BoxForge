@@ -18,6 +18,7 @@ export class BoxScene3D {
     this.foldProgress = 0.85;   // 0.0 (flat) -> 1.0 (folded)
     this.explodeDistance = 0;   // 0mm -> 80mm
     this.lidOpenProgress = 0;   // 0.0 (closed) -> 1.0 (open)
+    this.assemblyStep = 0;      // 0 = all assembled, 1 = base/dividers, 2 = sides, 3 = front/back, 4 = lid
     this.showWireframe = true;
     this.showDimensions = true;
     this.xRayMode = false;
@@ -507,6 +508,7 @@ export class BoxScene3D {
     this._applyKinematics();
     this._rebuildDimensionGizmos();
     this._refreshHighlightStates();
+    this._updateAssemblyStepVisibility();
   }
 
   /**
@@ -664,6 +666,60 @@ export class BoxScene3D {
   setLidOpenProgress(val) {
     this.lidOpenProgress = Math.max(0, Math.min(1, Number(val)));
     this._applyKinematics();
+  }
+
+  setAssemblyStep(val) {
+    this.assemblyStep = Math.max(0, Math.min(4, Number(val) || 0));
+    this._updateAssemblyStepVisibility();
+  }
+
+  _updateAssemblyStepVisibility() {
+    if (!this.panelNodes || this.panelNodes.size === 0) return;
+
+    for (const [panelId, node] of this.panelNodes.entries()) {
+      let isVisible = true;
+      let isCurrentStep = false;
+
+      if (this.assemblyStep > 0) {
+        let partStep = 4;
+        if (panelId === 'bottom' || panelId.startsWith('div-')) {
+          partStep = 1;
+        } else if (panelId === 'left' || panelId === 'right') {
+          partStep = 2;
+        } else if (panelId === 'front' || panelId === 'back') {
+          partStep = 3;
+        } else if (panelId === 'top' || panelId === 'wrap') {
+          partStep = 4;
+        }
+
+        isVisible = partStep <= this.assemblyStep;
+        isCurrentStep = partStep === this.assemblyStep;
+      }
+
+      if (node.meshes) {
+        for (const m of node.meshes) {
+          m.visible = isVisible;
+          if (m.material && Array.isArray(m.material)) {
+            m.material.forEach((mat) => {
+              if (mat) {
+                mat.transparent = true;
+                mat.opacity = isVisible ? (this.xRayMode ? 0.35 : 1.0) : 0.05;
+              }
+            });
+          }
+        }
+      }
+      if (node.edgeLinesList) {
+        for (const el of node.edgeLinesList) {
+          el.visible = isVisible && this.showWireframe;
+          if (isCurrentStep && el.material) {
+            el.material.color.setHex(0x38bdf8);
+          } else if (el.material) {
+            el.material.color.setHex(0x0f172a);
+          }
+        }
+      }
+    }
   }
 
   setWireframe(enabled) {

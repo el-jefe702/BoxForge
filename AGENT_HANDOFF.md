@@ -200,3 +200,27 @@ Add the **Custom Shop Logo / Part Stamp Score Feature**, **Keyboard Shortcuts (`
 3. **Verification Gate (`tests/verify_phase1.py`)**:
    - Add `test_phase_4b_saas_polish()` verifying `src/ui/proUpgradeModal.js`, `#input-shop-stamp`, and all DOM IDs.
    - Run `python tests/verify_phase1.py` and mark `phase_4b_pro_tier_and_saas_polish` as `"DONE"` in `STATE_CHECKPOINT.json`.
+
+---
+
+## 7. Execution Blueprint: `phase_5_multi_sheet_and_assembly_guide`
+
+### Objectives
+1. **Phase 5A — Multi-Sheet Bed Pagination & Multi-Bed Layout**:
+   - Automatic overflow bin-packing across `Sheet 1`, `Sheet 2`, etc. in `src/geometry/parametricCore.js` (`packPanelsOnBed`).
+   - Side-by-side bed layout with global coordinates (`globalX = sheetIndex * (bedWidth + 40) + x`).
+   - Interactive 2D sheet selector tab bar (`#bar-sheet-pagination` / `#sheet-tabs-container`) with `[All Sheets]`, `[Sheet 1]`, `[Sheet 2]`.
+   - Dual-mode multi-sheet export in `.lbrn2` and AutoCAD `.DXF` with framed sheet bounding boxes on Layer `C03` / `3_VECTOR_SCORE`.
+
+2. **Phase 5B — 3D Step-by-Step Assembly Visualizer & Sequence Stepper**:
+   - 4-step progressive assembly in `src/viewport/scene3D.js` (`setAssemblyStep(step)`):
+     - `Step 0`: All parts assembled
+     - `Step 1`: Base panel & Internal egg-crate dividers
+     - `Step 2`: Side walls (`left`, `right`)
+     - `Step 3`: Front & Back walls (`front`, `back`)
+     - `Step 4`: Top lid & living hinge wrap (`top`, `wrap`)
+   - Stepper controls (`#btn-assembly-step-prev`, `#btn-assembly-step-next`, `#select-assembly-step`, `#val-assembly-step`).
+
+3. **Verification Gate (`tests/verify_phase1.py`)**:
+   - `test_phase_5a_multi_sheet_pagination()` and `test_phase_5b_assembly_guide()`.
+   - Update `STATE_CHECKPOINT.json` (`phase_5a` and `phase_5b` -> `DONE`).

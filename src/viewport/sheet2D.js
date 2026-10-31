@@ -17,6 +17,7 @@ export class LaserSheet2D {
     this.selectedPanelId = null;
     this.hoveredPanelId = null;
     this.showNominalOverlay = true;
+    this.currentSheetIndex = 'all'; // 'all' | 0 | 1 | ...
 
     this.zoom = 1.0;
     this.panX = 40;
@@ -99,7 +100,12 @@ export class LaserSheet2D {
     if (!this.model) return null;
     for (const p of this.model.panels) {
       if (!p.bedPosition) continue;
-      const { x, y } = p.bedPosition;
+      const pos = p.bedPosition;
+      if (this.currentSheetIndex !== 'all' && pos.sheetIndex !== this.currentSheetIndex) {
+        continue;
+      }
+      const x = this.currentSheetIndex === 'all' ? (pos.globalX ?? pos.x) : pos.x;
+      const y = this.currentSheetIndex === 'all' ? (pos.globalY ?? pos.y) : pos.y;
       if (wx >= x && wx <= x + p.width && wy >= y && wy <= y + p.height) {
         return p;
       }
@@ -110,6 +116,11 @@ export class LaserSheet2D {
   selectPanel(panelId) {
     this.selectedPanelId = panelId;
     this.render();
+  }
+
+  setSheetIndex(index) {
+    this.currentSheetIndex = index;
+    this.fitToBed();
   }
 
   updateModel(model, autoFit = false) {
@@ -129,14 +140,21 @@ export class LaserSheet2D {
     this.canvas.width = cw * window.devicePixelRatio;
     this.canvas.height = ch * window.devicePixelRatio;
 
-    const { bedWidth, bedHeight, boundingWidth, boundingHeight } = this.model.nesting;
-    const targetW = Math.max(bedWidth, boundingWidth);
-    const targetH = Math.max(bedHeight, boundingHeight);
+    const { bedWidth, bedHeight, totalSheets = 1, boundingWidth, boundingHeight } = this.model.nesting;
+    let targetW, targetH;
+
+    if (this.currentSheetIndex === 'all') {
+      targetW = totalSheets > 1 ? totalSheets * (bedWidth + 40) - 40 : Math.max(bedWidth, boundingWidth);
+      targetH = Math.max(bedHeight, boundingHeight);
+    } else {
+      targetW = bedWidth;
+      targetH = bedHeight;
+    }
 
     const pad = 48;
     const scaleX = (cw - pad * 2) / targetW;
     const scaleY = (ch - pad * 2) / targetH;
-    this.zoom = Math.max(0.4, Math.min(4.5, Math.min(scaleX, scaleY)));
+    this.zoom = Math.max(0.25, Math.min(4.5, Math.min(scaleX, scaleY)));
     this.panX = (cw - targetW * this.zoom) * 0.5;
     this.panY = (ch - targetH * this.zoom) * 0.5;
     this.render();
@@ -147,8 +165,12 @@ export class LaserSheet2D {
     const cw = this.canvas.parentElement?.clientWidth || 600;
     const ch = this.canvas.parentElement?.clientHeight || 500;
     const targetPanel = this.model.panels.find(p => p.id === this.selectedPanelId) || this.model.panels[1] || this.model.panels[0];
-    const bx = targetPanel.bedPosition.x + targetPanel.width * 0.25;
-    const by = targetPanel.bedPosition.y;
+    const bx = this.currentSheetIndex === 'all'
+      ? (targetPanel.bedPosition.globalX ?? targetPanel.bedPosition.x) + targetPanel.width * 0.25
+      : targetPanel.bedPosition.x + targetPanel.width * 0.25;
+    const by = this.currentSheetIndex === 'all'
+      ? (targetPanel.bedPosition.globalY ?? targetPanel.bedPosition.y)
+      : targetPanel.bedPosition.y;
     this.zoom = 16;
     this.panX = cw * 0.5 - bx * this.zoom;
     this.panY = ch * 0.5 - by * this.zoom;
@@ -182,57 +204,73 @@ export class LaserSheet2D {
       return;
     }
 
-    const { bedWidth, bedHeight } = this.model.nesting;
+    const { bedWidth, bedHeight, totalSheets = 1 } = this.model.nesting;
 
     ctx.save();
     ctx.translate(this.panX, this.panY);
     ctx.scale(this.zoom, this.zoom);
 
-    // 1. Draw Laser Bed Surface & Grid
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(0, 0, bedWidth, bedHeight);
+    // 1. Draw Laser Bed Surface(s) & Grid(s)
+    const sheetsToDraw = this.currentSheetIndex === 'all'
+      ? Array.from({ length: totalSheets }, (_, i) => i)
+      : [Number(this.currentSheetIndex) || 0];
 
-    ctx.lineWidth = 1 / this.zoom;
-    ctx.strokeStyle = 'rgba(51, 65, 85, 0.38)';
-    ctx.beginPath();
-    for (let x = 0; x <= bedWidth; x += 10) {
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, bedHeight);
-    }
-    for (let y = 0; y <= bedHeight; y += 10) {
-      ctx.moveTo(0, y);
-      ctx.lineTo(bedWidth, y);
-    }
-    ctx.stroke();
+    for (const s of sheetsToDraw) {
+      const sheetOx = this.currentSheetIndex === 'all' ? s * (bedWidth + 40) : 0;
 
-    ctx.strokeStyle = 'rgba(71, 85, 105, 0.65)';
-    ctx.beginPath();
-    for (let x = 0; x <= bedWidth; x += 50) {
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, bedHeight);
-    }
-    for (let y = 0; y <= bedHeight; y += 50) {
-      ctx.moveTo(0, y);
-      ctx.lineTo(bedWidth, y);
-    }
-    ctx.stroke();
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(sheetOx, 0, bedWidth, bedHeight);
 
-    ctx.lineWidth = 1.8 / this.zoom;
-    ctx.strokeStyle = this.model.nesting.fitsOnBed ? '#334155' : '#ef4444';
-    ctx.strokeRect(0, 0, bedWidth, bedHeight);
+      ctx.lineWidth = 1 / this.zoom;
+      ctx.strokeStyle = 'rgba(51, 65, 85, 0.38)';
+      ctx.beginPath();
+      for (let x = 0; x <= bedWidth; x += 10) {
+        ctx.moveTo(sheetOx + x, 0);
+        ctx.lineTo(sheetOx + x, bedHeight);
+      }
+      for (let y = 0; y <= bedHeight; y += 10) {
+        ctx.moveTo(sheetOx, y);
+        ctx.lineTo(sheetOx + bedWidth, y);
+      }
+      ctx.stroke();
 
-    ctx.fillStyle = '#64748b';
-    ctx.font = `${Math.max(8, 10 / this.zoom)}px ui-monospace, monospace`;
-    ctx.fillText(`BED 0,0 (${bedWidth}×${bedHeight}mm)`, 4 / this.zoom, -6 / this.zoom);
+      ctx.strokeStyle = 'rgba(71, 85, 105, 0.65)';
+      ctx.beginPath();
+      for (let x = 0; x <= bedWidth; x += 50) {
+        ctx.moveTo(sheetOx + x, 0);
+        ctx.lineTo(sheetOx + x, bedHeight);
+      }
+      for (let y = 0; y <= bedHeight; y += 50) {
+        ctx.moveTo(sheetOx, y);
+        ctx.lineTo(sheetOx + bedWidth, y);
+      }
+      ctx.stroke();
+
+      ctx.lineWidth = 1.8 / this.zoom;
+      ctx.strokeStyle = this.model.nesting.fitsOnBed ? '#334155' : '#ef4444';
+      ctx.strokeRect(sheetOx, 0, bedWidth, bedHeight);
+
+      ctx.fillStyle = '#64748b';
+      ctx.font = `${Math.max(8, 10 / this.zoom)}px ui-monospace, monospace`;
+      const labelText = totalSheets > 1
+        ? `SHEET ${s + 1} OF ${totalSheets} (${bedWidth}×${bedHeight}mm)`
+        : `BED 0,0 (${bedWidth}×${bedHeight}mm)`;
+      ctx.fillText(labelText, sheetOx + 4 / this.zoom, -6 / this.zoom);
+    }
 
     // 2. Draw Each Nested Panel
     for (const panel of this.model.panels) {
-      const pos = panel.bedPosition || { x: 0, y: 0, overflow: false };
+      const pos = panel.bedPosition || { x: 0, y: 0, overflow: false, sheetIndex: 0 };
+      if (this.currentSheetIndex !== 'all' && pos.sheetIndex !== this.currentSheetIndex) {
+        continue;
+      }
+      const px = this.currentSheetIndex === 'all' ? (pos.globalX ?? pos.x) : pos.x;
+      const py = this.currentSheetIndex === 'all' ? (pos.globalY ?? pos.y) : pos.y;
       const isSelected = panel.id === this.selectedPanelId;
       const isHovered = panel.id === this.hoveredPanelId;
 
       ctx.save();
-      ctx.translate(pos.x, pos.y);
+      ctx.translate(px, py);
 
       this._tracePolygon(ctx, panel.outline);
       ctx.fillStyle = pos.overflow

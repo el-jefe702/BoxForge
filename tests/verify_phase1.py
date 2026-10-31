@@ -242,6 +242,55 @@ def test_phase_4b_saas_polish():
     print("[PASS] Phase 4B BoxForge Pro SaaS Tier, Custom Shop Stamp and Keyboard Shortcuts verified")
 
 
+def test_phase_5a_multi_sheet_pagination():
+    core_js = (ROOT / "src" / "geometry" / "parametricCore.js").read_text(encoding="utf-8")
+    sheet_js = (ROOT / "src" / "viewport" / "sheet2D.js").read_text(encoding="utf-8")
+    export_js = (ROOT / "src" / "exporters" / "exportEngine.js").read_text(encoding="utf-8")
+    dxf_js = (ROOT / "src" / "exporters" / "dxfExporter.js").read_text(encoding="utf-8")
+    main_js = (ROOT / "src" / "main.js").read_text(encoding="utf-8")
+    index_html = (ROOT / "index.html").read_text(encoding="utf-8")
+
+    # Verify multi-sheet packing engine
+    assert 'totalSheets' in core_js, "parametricCore must calculate totalSheets"
+    assert 'currentSheetIndex' in core_js, "parametricCore must calculate currentSheetIndex"
+    assert 'globalX' in core_js, "parametricCore must calculate globalX offset for multi-sheet layout"
+
+    # Verify 2D sheet viewport pagination
+    assert 'setSheetIndex' in sheet_js, "LaserSheet2D must provide setSheetIndex method"
+    assert 'currentSheetIndex' in sheet_js, "LaserSheet2D must maintain currentSheetIndex"
+    assert 'id="bar-sheet-pagination"' in index_html, "Missing bar-sheet-pagination in index.html"
+    assert 'id="sheet-tabs-container"' in index_html, "Missing sheet-tabs-container in index.html"
+    assert 'sheetTabsContainer' in main_js
+
+    # Verify multi-sheet export support
+    assert 'SHEET' in export_js, "exportEngine must support multi-sheet layout labels"
+    assert 'SHEET' in dxf_js, "dxfExporter must support multi-sheet layout labels"
+
+    print("[PASS] Phase 5A Multi-Sheet Bed Pagination & Multi-Bed Layout verified")
+
+
+def test_phase_5b_assembly_guide():
+    scene_js = (ROOT / "src" / "viewport" / "scene3D.js").read_text(encoding="utf-8")
+    main_js = (ROOT / "src" / "main.js").read_text(encoding="utf-8")
+    index_html = (ROOT / "index.html").read_text(encoding="utf-8")
+
+    # Verify 3D Assembly Stepper in scene3D
+    assert 'setAssemblyStep' in scene_js, "BoxScene3D must provide setAssemblyStep method"
+    assert '_updateAssemblyStepVisibility' in scene_js, "BoxScene3D must manage assembly step visibility"
+
+    # Verify DOM controls
+    for dom_id in [
+        'val-assembly-step',
+        'btn-assembly-step-prev',
+        'btn-assembly-step-next',
+        'select-assembly-step'
+    ]:
+        assert f'id="{dom_id}"' in index_html, f"Missing {dom_id} in index.html"
+        assert dom_id in main_js, f"Missing {dom_id} in main.js"
+
+    print("[PASS] Phase 5B 3D Step-by-Step Assembly Visualizer & Sequence Stepper verified")
+
+
 if __name__ == "__main__":
     test_file_structure_and_dom_ids()
     test_finger_distribution_invariants()
@@ -252,4 +301,6 @@ if __name__ == "__main__":
     test_phase_3c_dxf_exporter_and_rotation_nesting()
     test_phase_4a_persistence()
     test_phase_4b_saas_polish()
-    print("ALL PHASE 1, PHASE 2, PHASE 3A, PHASE 3B, PHASE 3C, PHASE 4A & PHASE 4B VERIFICATION CHECKS PASSED.")
+    test_phase_5a_multi_sheet_pagination()
+    test_phase_5b_assembly_guide()
+    print("ALL PHASE 1, PHASE 2, PHASE 3A, PHASE 3B, PHASE 3C, PHASE 4A, PHASE 4B, PHASE 5A & PHASE 5B VERIFICATION CHECKS PASSED.")

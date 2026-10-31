@@ -102,6 +102,31 @@
         "index.html",
         "tests/verify_phase1.py"
       ]
+    },
+    {
+      "id": "phase_5a_multi_sheet_pagination",
+      "title": "Phase 5A: Multi-Sheet Bed Pagination, Multi-Bed Layout & Sheet Tab Selector",
+      "status": "DONE",
+      "files": [
+        "src/geometry/parametricCore.js",
+        "src/viewport/sheet2D.js",
+        "src/exporters/exportEngine.js",
+        "src/exporters/dxfExporter.js",
+        "src/main.js",
+        "index.html",
+        "tests/verify_phase1.py"
+      ]
+    },
+    {
+      "id": "phase_5b_assembly_guide",
+      "title": "Phase 5B: 3D Step-by-Step Assembly Visualizer & Sequence Stepper",
+      "status": "DONE",
+      "files": [
+        "src/viewport/scene3D.js",
+        "src/main.js",
+        "index.html",
+        "tests/verify_phase1.py"
+      ]
     }
   ]
 }

@@ -1385,11 +1385,13 @@ export function generateParametricBox(params) {
 }
 
 /**
- * Shelf First-Fit Decreasing (FFD) 2D Nesting Engine with 90-degree Rotation
+ * Shelf First-Fit Decreasing (FFD) 2D Nesting Engine with 90-degree Rotation & Multi-Sheet Pagination
  * If allowRotation is true, panels that fit better upright are automatically rotated 90 degrees.
+ * If panels exceed bed boundary, they are automatically paginated across multiple sheets (Sheet 1, Sheet 2, ...).
  */
 export function packPanelsOnBed(panels, bedWidth, bedHeight, spacing = 5, allowRotation = true) {
   const margin = Math.max(4, spacing);
+  let currentSheetIndex = 0;
   let cursorX = margin;
   let cursorY = margin;
   let shelfHeight = 0;
@@ -1418,34 +1420,74 @@ export function packPanelsOnBed(panels, bedWidth, bedHeight, spacing = 5, allowR
 
     totalPanelArea += pw * ph;
 
+    // Check if panel is physically larger than laser bed in both orientations
+    const physicallyExceedsBed =
+      (panel.width + margin * 2 > bedWidth && panel.height + margin * 2 > bedWidth) ||
+      (panel.width + margin * 2 > bedHeight && panel.height + margin * 2 > bedHeight);
+    if (physicallyExceedsBed) {
+      fitsOnBed = false;
+    }
+
+    // Advance to next row on current sheet if exceeding bed width
     if (cursorX + pw + margin > bedWidth && cursorX > margin) {
       cursorX = margin;
       cursorY += shelfHeight + spacing;
       shelfHeight = 0;
     }
 
+    // Advance to next sheet if exceeding bed height
+    if (cursorY + ph + margin > bedHeight && (cursorY > margin || cursorX > margin)) {
+      currentSheetIndex += 1;
+      cursorX = margin;
+      cursorY = margin;
+      shelfHeight = 0;
+    }
+
     const x = cursorX;
     const y = cursorY;
-    const overflow = (x + pw + margin > bedWidth) || (y + ph + margin > bedHeight);
-    if (overflow) fitsOnBed = false;
+    const globalX = currentSheetIndex * (bedWidth + 40) + x;
+    const globalY = y;
+    const overflow = physicallyExceedsBed;
 
-    placements.push({
+    const placementRecord = {
       panelId: panel.id,
+      sheetIndex: currentSheetIndex,
       x,
       y,
+      globalX,
+      globalY,
       width: pw,
       height: ph,
       rotated,
       overflow
-    });
+    };
 
-    panel.bedPosition = { x, y, width: pw, height: ph, rotated, overflow };
+    placements.push(placementRecord);
+    panel.bedPosition = placementRecord;
 
     cursorX += pw + spacing;
     shelfHeight = Math.max(shelfHeight, ph);
     maxUsedX = Math.max(maxUsedX, x + pw + margin);
     maxUsedY = Math.max(maxUsedY, y + ph + margin);
   }
+
+  const totalSheets = currentSheetIndex + 1;
+  const sheets = Array.from({ length: totalSheets }, (_, idx) => {
+    const sheetPanels = placements.filter(p => p.sheetIndex === idx);
+    const maxSX = sheetPanels.length > 0 ? Math.max(...sheetPanels.map(p => p.x + p.width + margin)) : margin;
+    const maxSY = sheetPanels.length > 0 ? Math.max(...sheetPanels.map(p => p.y + p.height + margin)) : margin;
+    const sheetPanelArea = sheetPanels.reduce((sum, p) => sum + p.width * p.height, 0);
+    const bArea = Math.max(1, maxSX * maxSY);
+    const bedArea = Math.max(1, bedWidth * bedHeight);
+    return {
+      sheetIndex: idx,
+      panelCount: sheetPanels.length,
+      boundingWidth: maxSX,
+      boundingHeight: maxSY,
+      utilizationPct: Math.min(100, (sheetPanelArea / bArea) * 100),
+      bedUsagePct: Math.min(100, (sheetPanelArea / bedArea) * 100)
+    };
+  });
 
   const boundingArea = Math.max(1, maxUsedX * maxUsedY);
   const bedArea = Math.max(1, bedWidth * bedHeight);
@@ -1457,8 +1499,10 @@ export function packPanelsOnBed(panels, bedWidth, bedHeight, spacing = 5, allowR
     bedHeight,
     spacing,
     allowRotation,
+    totalSheets,
+    sheets,
     placements,
-    boundingWidth: maxUsedX,
+    boundingWidth: totalSheets > 1 ? totalSheets * (bedWidth + 40) - 40 : maxUsedX,
     boundingHeight: maxUsedY,
     utilizationPct,
     bedUsagePct,
