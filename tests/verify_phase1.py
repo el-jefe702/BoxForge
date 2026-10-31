@@ -1,8 +1,9 @@
 """
-BoxForge Pro — Phase 1, Phase 2 & Phase 3A Automated Verification Suite
+BoxForge Pro — Phase 1, Phase 2, Phase 3A & Phase 3B Automated Verification Suite
 Verifies DOM-to-Controller ID bindings, ES module export/import integrity,
 Living Hinge bend-stress physics invariants, Hardware Cutout templates,
-Dual-Mode .lbrn2 kerf export, and the 1-Minute Kerf Calibration Wizard.
+Dual-Mode .lbrn2 kerf export, 1-Minute Kerf Calibration Wizard,
+Dogbone Corner Micro-Reliefs, and Layer C03 Assembly Witness Marks.
 """
 
 import math
@@ -119,14 +120,32 @@ def test_phase_3a_kerf_wizard_and_dual_lbrn_mode():
     exporter_js = (ROOT / "src" / "exporters" / "exportEngine.js").read_text(encoding="utf-8")
     wizard_js = (ROOT / "src" / "ui" / "kerfWizardModal.js").read_text(encoding="utf-8")
 
-    # Verify native kerf tag output in .lbrn2 exporter
     assert '<kerf Value="' in exporter_js, "Exporter must output <kerf Value=... /> attribute"
     assert 'lightburn-layer' in exporter_js, "Exporter must support lightburn-layer kerfMode option"
 
-    # Verify KerfWizardModal exports and has 7 calibration slots
     assert 'class KerfWizardModal' in wizard_js
-    assert '[-0.05, 0.00, 0.05, 0.10, 0.14, 0.18, 0.22]' in wizard_js or '[-0.05, 0.0, 0.05, 0.1, 0.14, 0.18, 0.22]' in wizard_js or '-0.05' in wizard_js
+    assert '[-0.05, 0.00, 0.05, 0.10, 0.14, 0.18, 0.22]' in wizard_js or '-0.05' in wizard_js
     print("[PASS] Phase 3A Kerf Calibration Wizard and Dual .lbrn2 Kerf Mode verified")
+
+
+def test_phase_3b_dogbones_and_witness_marks():
+    core_js = (ROOT / "src" / "geometry" / "parametricCore.js").read_text(encoding="utf-8")
+    main_js = (ROOT / "src" / "main.js").read_text(encoding="utf-8")
+    index_html = (ROOT / "index.html").read_text(encoding="utf-8")
+
+    # Verify dogbone fillet function and parameters in parametricCore
+    assert 'generateDogbonePoints' in core_js, "Missing generateDogbonePoints function"
+    assert 'dogboneRelief' in core_js, "parametricCore must accept dogboneRelief option"
+    assert 'assemblyMarks' in core_js, "parametricCore must accept assemblyMarks option"
+    assert 'generateAssemblyWitnessMarks' in core_js, "Missing generateAssemblyWitnessMarks function"
+
+    # Verify checkboxes in index.html and main.js
+    assert 'id="chk-dogbone"' in index_html, "Missing chk-dogbone in index.html"
+    assert 'id="chk-witness-marks"' in index_html, "Missing chk-witness-marks in index.html"
+    assert 'chkDogbone' in main_js
+    assert 'chkWitnessMarks' in main_js
+
+    print("[PASS] Phase 3B Dogbone Corner Reliefs and Layer C03 Assembly Witness Marks verified")
 
 
 if __name__ == "__main__":
@@ -135,4 +154,5 @@ if __name__ == "__main__":
     test_kerf_offset_complementarity()
     test_living_hinge_physics_and_cutout_templates()
     test_phase_3a_kerf_wizard_and_dual_lbrn_mode()
-    print("ALL PHASE 1, PHASE 2 & PHASE 3A VERIFICATION CHECKS PASSED.")
+    test_phase_3b_dogbones_and_witness_marks()
+    print("ALL PHASE 1, PHASE 2, PHASE 3A & PHASE 3B VERIFICATION CHECKS PASSED.")

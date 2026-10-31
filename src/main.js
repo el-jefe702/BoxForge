@@ -1,8 +1,8 @@
 /**
- * BoxForge Pro — Phase 1, Phase 2 & Phase 3A Main Controller
+ * BoxForge Pro — Phase 1, Phase 2, Phase 3A & Phase 3B Main Controller
  * Connects Parametric Core, Living Hinge Calculator, Hardware Panel Cutout Studio,
- * 1-Minute Kerf Calibration Wizard Modal, 3D Kinematic Fold Viewport,
- * 2D Laser Sheet Canvas, and Dual-Mode LightBurn Exporter.
+ * 1-Minute Kerf Calibration Wizard Modal, Dogbone Reliefs, Assembly Witness Marks,
+ * 3D Kinematic Fold Viewport, 2D Laser Sheet Canvas, and Dual-Mode LightBurn Exporter.
  */
 
 import { LASER_MACHINES, MATERIALS, FIT_PRESETS, TSLOT_HARDWARE } from './presets.js';
@@ -40,6 +40,8 @@ class BoxForgeApp {
       fitInterference: 0.04,
       fingerWidth: 14,
       kerfMode: 'baked',          // 'baked' | 'lightburn-layer'
+      dogboneRelief: false,       // Phase 3B: Dogbone corner micro-reliefs
+      assemblyMarks: true,        // Phase 3B: Layer C03 edge-matching witness marks
 
       // Phase 2: Living Hinge parameters
       hingePattern: 'straight',
@@ -121,6 +123,8 @@ class BoxForgeApp {
       hardwareSelect: document.getElementById('select-hardware'),
       hardwareRow: document.getElementById('row-hardware'),
       dimModeButtons: document.querySelectorAll('[data-dim-mode]'),
+      chkDogbone: document.getElementById('chk-dogbone'),
+      chkWitnessMarks: document.getElementById('chk-witness-marks'),
 
       inputWidth: document.getElementById('input-width'),
       valWidth: document.getElementById('val-width'),
@@ -326,6 +330,20 @@ class BoxForgeApp {
     if (this.el.btnOpenKerfWizard) {
       this.el.btnOpenKerfWizard.addEventListener('click', () => {
         this.kerfWizard.open(this.state.thickness, this.state.kerf, this.state.kerfMode);
+      });
+    }
+
+    if (this.el.chkDogbone) {
+      this.el.chkDogbone.addEventListener('change', (e) => {
+        this.state.dogboneRelief = Boolean(e.target.checked);
+        this.recompute(false);
+      });
+    }
+
+    if (this.el.chkWitnessMarks) {
+      this.el.chkWitnessMarks.addEventListener('change', (e) => {
+        this.state.assemblyMarks = Boolean(e.target.checked);
+        this.recompute(false);
       });
     }
 
@@ -844,6 +862,8 @@ class BoxForgeApp {
       hingeSlitsPerCol: this.state.hingeSlitsPerCol,
       materialCategory: material.category,
       panelCutouts: this.state.panelCutouts,
+      dogboneRelief: this.state.dogboneRelief,
+      assemblyMarks: this.state.assemblyMarks,
       bedWidth: machine.bedWidth,
       bedHeight: machine.bedHeight,
       partSpacing: this.state.partSpacing,

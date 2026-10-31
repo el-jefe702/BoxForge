@@ -1,7 +1,8 @@
 /**
- * BoxForge Pro — Deterministic 2D/3D Parametric Enclosure Core (Phase 1 + Phase 2)
+ * BoxForge Pro — Deterministic 2D/3D Parametric Enclosure Core (Phase 1, 2, 3A & 3B)
  * Generates kerf-compensated panel contours, internal mortises, T-slot captive-nut joints,
  * egg-crate dividers, Living Hinge curved enclosures (Layer C02), Hardware Panel Cutouts (Layer C01/C03),
+ * Dogbone Corner Micro-Reliefs, Layer C03 Assembly Witness Marks,
  * 3D kinematic transforms, and 2D flat-bed nesting layouts.
  */
 
@@ -31,6 +32,35 @@ export function computeFingerDistribution(totalEdgeLength, thickness, targetFing
 }
 
 /**
+ * Generate a 5-point 45-degree semicircular dogbone relief fillet
+ * into the solid shoulder material at an inside corner.
+ *
+ * @param {number} x - Corner vertex x
+ * @param {number} y - Corner vertex y
+ * @param {number} dirX - Direction along edge into shoulder (-1 or +1)
+ * @param {number} dirY - Direction into material (+1 is inward)
+ * @param {number} radius - Dogbone radius (default 0.45mm)
+ */
+function generateDogbonePoints(x, y, dirX, dirY, radius = 0.45) {
+  const r = Math.max(0.2, radius);
+  const diagX = dirX * (r * 0.7071);
+  const diagY = dirY * (r * 0.7071);
+  const cx = x + diagX;
+  const cy = y + diagY;
+
+  const pts = [];
+  const steps = 4;
+  for (let i = 0; i <= steps; i++) {
+    const angle = (i / steps) * Math.PI - Math.PI * 0.5;
+    pts.push({
+      x: cx + Math.cos(angle) * (r * 0.65) * dirX,
+      y: cy + Math.sin(angle) * (r * 0.65) * dirY
+    });
+  }
+  return pts;
+}
+
+/**
  * Generate a finger-jointed or T-slot edge polyline from (0, 0) to (edgeLength, 0)
  * in local edge coordinates where:
  *   +X is along the edge from start to end (0 -> edgeLength)
@@ -46,7 +76,9 @@ export function buildEdgeProfile(opts) {
     kerfDelta = 0,
     isTSlot = false,
     hardware = TSLOT_HARDWARE.M3,
-    thumbNotch = false
+    thumbNotch = false,
+    dogboneRelief = false,
+    dogboneRadius = 0.45
   } = opts;
 
   const points = [];
@@ -60,6 +92,15 @@ export function buildEdgeProfile(opts) {
       }
     }
     points.push({ x, y });
+  };
+
+  const addCornerWithRelief = (x, y, dirX, dirY) => {
+    if (dogboneRelief) {
+      const dbPts = generateDogbonePoints(x, y, dirX, dirY, dogboneRadius);
+      for (const p of dbPts) pushPt(p.x, p.y);
+    } else {
+      pushPt(x, y);
+    }
   };
 
   if (polarity === 'flat') {
@@ -78,7 +119,7 @@ export function buildEdgeProfile(opts) {
       const cx = L / 2;
       const steps = 20;
       pushPt(cx - notchRadius, yOut);
-      for (let i = 1; i < steps; i++) {
+      for (let i = 1; i <= steps; i++) {
         const angle = Math.PI - (i / steps) * Math.PI;
         const nx = cx + Math.cos(angle) * notchRadius;
         const ny = yOut + Math.sin(angle) * (notchRadius * 0.72);
@@ -121,9 +162,9 @@ export function buildEdgeProfile(opts) {
   pushPt(0, startAtOuter ? yOuter : yShoulder);
   if (startAtOuter && polarity === 'male') {
     pushPt(t + kerfDelta, yOuter);
-    pushPt(t + kerfDelta, yShoulder);
+    addCornerWithRelief(t + kerfDelta, yShoulder, 1, 1);
   } else if (!startAtOuter && polarity === 'female') {
-    pushPt(t - kerfDelta, yShoulder);
+    addCornerWithRelief(t - kerfDelta, yShoulder, -1, 1);
     pushPt(t - kerfDelta, yOuter);
   } else {
     pushPt(t, startAtOuter ? yOuter : yShoulder);
@@ -173,10 +214,10 @@ export function buildEdgeProfile(opts) {
       if (isOdd) {
         const x0 = segStart - kerfDelta;
         const x1 = segEnd + kerfDelta;
-        pushPt(x0, yShoulder);
+        addCornerWithRelief(x0, yShoulder, -1, 1);
         pushPt(x0, yOuter);
         pushPt(x1, yOuter);
-        pushPt(x1, yShoulder);
+        addCornerWithRelief(x1, yShoulder, 1, 1);
       } else {
         pushPt(segStart + (i === 0 ? 0 : kerfDelta), yShoulder);
         pushPt(segEnd - kerfDelta, yShoulder);
@@ -186,8 +227,8 @@ export function buildEdgeProfile(opts) {
         const x0 = segStart + kerfDelta;
         const x1 = segEnd - kerfDelta;
         pushPt(x0, yOuter);
-        pushPt(x0, yShoulder);
-        pushPt(x1, yShoulder);
+        addCornerWithRelief(x0, yShoulder, 1, 1);
+        addCornerWithRelief(x1, yShoulder, -1, 1);
         pushPt(x1, yOuter);
       } else {
         pushPt(segStart - (i === 0 ? 0 : kerfDelta), yOuter);
@@ -197,12 +238,12 @@ export function buildEdgeProfile(opts) {
   }
 
   if (startAtOuter && polarity === 'male') {
-    pushPt(L - t - kerfDelta, yShoulder);
+    addCornerWithRelief(L - t - kerfDelta, yShoulder, -1, 1);
     pushPt(L - t - kerfDelta, yOuter);
     pushPt(L, yOuter);
   } else if (!startAtOuter && polarity === 'female') {
     pushPt(L - t + kerfDelta, yOuter);
-    pushPt(L - t + kerfDelta, yShoulder);
+    addCornerWithRelief(L - t + kerfDelta, yShoulder, 1, 1);
     pushPt(L, yShoulder);
   } else {
     pushPt(L, startAtOuter ? yOuter : yShoulder);
@@ -240,7 +281,7 @@ function mapEdgeToPanel(edgeResult, side, W, H) {
   return { points: mappedPts, holes: mappedHoles };
 }
 
-function buildPanelOutline({ W, H, t, fingerWidth, edgesConfig, kerfDelta, isTSlot, hardware }) {
+function buildPanelOutline({ W, H, t, fingerWidth, edgesConfig, kerfDelta, isTSlot, hardware, dogboneRelief }) {
   const sides = ['bottom', 'right', 'top', 'left'];
   const allPoints = [];
   const allHoles = [];
@@ -257,7 +298,8 @@ function buildPanelOutline({ W, H, t, fingerWidth, edgesConfig, kerfDelta, isTSl
       kerfDelta,
       isTSlot: isTSlot && cfg.allowTSlot !== false,
       hardware,
-      thumbNotch: Boolean(cfg.thumbNotch)
+      thumbNotch: Boolean(cfg.thumbNotch),
+      dogboneRelief
     });
     const mapped = mapEdgeToPanel(rawEdge, side, W, H);
     for (const pt of mapped.points) {
@@ -283,12 +325,10 @@ function buildPanelOutline({ W, H, t, fingerWidth, edgesConfig, kerfDelta, isTSl
 
 /**
  * Build a side wall (LEFT or RIGHT) with a rounded living-hinge corner of radius R
- * at its top-back corner!
- * For LEFT panel: local X=0 is Back edge, X=D is Front edge. Top-left corner (0, H) is rounded by R.
- * For RIGHT panel: local X=0 is Front edge, X=D is Back edge. Top-right corner (D, H) is rounded by R.
+ * at its top-back corner
  */
 function buildLivingHingeSideWallOutline({
-  D, H, t, R, side, fingerWidth, kerfDelta, isTSlot, hardware
+  D, H, t, R, side, fingerWidth, kerfDelta, isTSlot, hardware, dogboneRelief
 }) {
   const straightBackH = Math.max(t * 4, H - R);
   const straightTopD = Math.max(t * 4, D - R);
@@ -303,7 +343,6 @@ function buildLivingHingeSideWallOutline({
     pts.push({ x, y });
   };
 
-  // 1. Bottom edge (0,0) -> (D,0) is standard female edge
   const botEdge = mapEdgeToPanel(
     buildEdgeProfile({
       edgeLength: D,
@@ -313,7 +352,8 @@ function buildLivingHingeSideWallOutline({
       cornerStyle: 'corner-recessed',
       kerfDelta,
       isTSlot,
-      hardware
+      hardware,
+      dogboneRelief
     }),
     'bottom',
     D,
@@ -323,7 +363,6 @@ function buildLivingHingeSideWallOutline({
   holes.push(...botEdge.holes);
 
   if (side === 'left') {
-    // Right edge (x = D, y: 0 -> H) is Front edge (full height female)
     const frontEdge = mapEdgeToPanel(
       buildEdgeProfile({
         edgeLength: H,
@@ -333,7 +372,8 @@ function buildLivingHingeSideWallOutline({
         cornerStyle: 'corner-recessed',
         kerfDelta,
         isTSlot,
-        hardware
+        hardware,
+        dogboneRelief
       }),
       'right',
       D,
@@ -342,19 +382,16 @@ function buildLivingHingeSideWallOutline({
     frontEdge.points.forEach(p => pushPt(p.x, p.y));
     holes.push(...frontEdge.holes);
 
-    // Top straight section from x = D down to x = R (y = H - t shoulder)
     pushPt(D - t, H - t + kerfDelta);
     pushPt(R, H - t + kerfDelta);
 
-    // Quarter-circle arc at top-left corner: center at (R, H - R), radius = R - t + kerfDelta
     const arcR = Math.max(2, R - t + kerfDelta);
     const steps = 18;
     for (let i = 1; i <= steps; i++) {
-      const angle = Math.PI * 0.5 + (i / steps) * (Math.PI * 0.5); // 90 deg -> 180 deg
+      const angle = Math.PI * 0.5 + (i / steps) * (Math.PI * 0.5);
       pushPt(R + Math.cos(angle) * arcR, (H - R) + Math.sin(angle) * arcR);
     }
 
-    // Back straight section from y = H - R down to y = 0 along x = 0 (female fingers)
     const backRaw = buildEdgeProfile({
       edgeLength: straightBackH,
       thickness: t,
@@ -363,13 +400,13 @@ function buildLivingHingeSideWallOutline({
       cornerStyle: 'corner-recessed',
       kerfDelta,
       isTSlot,
-      hardware
+      hardware,
+      dogboneRelief
     });
     for (const p of backRaw.points) {
       pushPt(p.y, straightBackH - p.x);
     }
   } else {
-    // side === 'right': Right edge (x = D) is Back edge (height = straightBackH)
     const backRaw = buildEdgeProfile({
       edgeLength: straightBackH,
       thickness: t,
@@ -378,24 +415,22 @@ function buildLivingHingeSideWallOutline({
       cornerStyle: 'corner-recessed',
       kerfDelta,
       isTSlot,
-      hardware
+      hardware,
+      dogboneRelief
     });
     for (const p of backRaw.points) {
       pushPt(D - p.y, p.x);
     }
 
-    // Quarter-circle arc at top-right corner: center at (D - R, H - R), radius = R - t + kerfDelta
     const arcR = Math.max(2, R - t + kerfDelta);
     const steps = 18;
-    for (let i = 0; i <= steps; i++) {
-      const angle = (i / steps) * (Math.PI * 0.5); // 0 deg -> 90 deg
+    for (let i = 1; i <= steps; i++) {
+      const angle = (i / steps) * (Math.PI * 0.5);
       pushPt((D - R) + Math.cos(angle) * arcR, (H - R) + Math.sin(angle) * arcR);
     }
 
-    // Top straight section from x = D - R to x = t
     pushPt(t, H - t + kerfDelta);
 
-    // Left edge (x = 0, y: H -> 0) is Front edge (full height female)
     const frontEdge = mapEdgeToPanel(
       buildEdgeProfile({
         edgeLength: H,
@@ -405,7 +440,8 @@ function buildLivingHingeSideWallOutline({
         cornerStyle: 'corner-recessed',
         kerfDelta,
         isTSlot,
-        hardware
+        hardware,
+        dogboneRelief
       }),
       'left',
       D,
@@ -420,10 +456,9 @@ function buildLivingHingeSideWallOutline({
 
 /**
  * Build the one-piece Continuous Living-Hinge Wrap Panel (BACK + HINGE ARC + TOP)
- * Width = outerW, Total Unfolded Height = straightBackH + arcLength + straightTopD
  */
 function buildLivingHingeWrapPanelOutline({
-  W, straightBackH, arcLength, straightTopD, t, fingerWidth, kerfDelta, isTSlot, hardware, thumbNotch
+  W, straightBackH, arcLength, straightTopD, t, fingerWidth, kerfDelta, isTSlot, hardware, thumbNotch, dogboneRelief
 }) {
   const totalH = straightBackH + arcLength + straightTopD;
   const pts = [];
@@ -437,7 +472,6 @@ function buildLivingHingeWrapPanelOutline({
     pts.push({ x, y });
   };
 
-  // 1. Bottom edge (0,0 -> W,0): Female fingers mating with BOTTOM's back edge
   const botEdge = mapEdgeToPanel(
     buildEdgeProfile({
       edgeLength: W,
@@ -447,7 +481,8 @@ function buildLivingHingeWrapPanelOutline({
       cornerStyle: 'corner-flush',
       kerfDelta,
       isTSlot,
-      hardware
+      hardware,
+      dogboneRelief
     }),
     'bottom',
     W,
@@ -456,7 +491,6 @@ function buildLivingHingeWrapPanelOutline({
   botEdge.points.forEach(p => pushPt(p.x, p.y));
   holes.push(...botEdge.holes);
 
-  // 2. Right lower edge (y: 0 -> straightBackH): Male fingers mating with LEFT/RIGHT back edge
   const rightLowerRaw = buildEdgeProfile({
     edgeLength: straightBackH,
     thickness: t,
@@ -465,17 +499,16 @@ function buildLivingHingeWrapPanelOutline({
     cornerStyle: 'corner-recessed',
     kerfDelta,
     isTSlot,
-    hardware
+    hardware,
+    dogboneRelief
   });
   for (const p of rightLowerRaw.points) {
     pushPt(W - p.y, p.x);
   }
 
-  // 3. Right hinge + top edge (y: straightBackH -> totalH): Flush along x = W - t (or W)
   pushPt(W + kerfDelta, straightBackH);
   pushPt(W + kerfDelta, totalH - t);
 
-  // 4. Top edge (y = totalH, x: W -> 0): Male fingers mating with FRONT wall top edge (or thumb tab)
   const topRaw = buildEdgeProfile({
     edgeLength: W,
     thickness: t,
@@ -485,17 +518,16 @@ function buildLivingHingeWrapPanelOutline({
     kerfDelta,
     isTSlot,
     hardware,
-    thumbNotch
+    thumbNotch,
+    dogboneRelief
   });
   for (const p of topRaw.points) {
     pushPt(W - p.x, totalH - p.y);
   }
 
-  // 5. Left top + hinge edge (y: totalH -> straightBackH)
   pushPt(-kerfDelta, totalH - t);
   pushPt(-kerfDelta, straightBackH);
 
-  // 6. Left lower edge (y: straightBackH -> 0): Male fingers mating with side wall back edge
   const leftLowerRaw = buildEdgeProfile({
     edgeLength: straightBackH,
     thickness: t,
@@ -504,7 +536,8 @@ function buildLivingHingeWrapPanelOutline({
     cornerStyle: 'corner-recessed',
     kerfDelta,
     isTSlot,
-    hardware
+    hardware,
+    dogboneRelief
   });
   for (const p of leftLowerRaw.points) {
     pushPt(p.y, straightBackH - p.x);
@@ -548,7 +581,66 @@ export function computePolygonLength(pts, closed = true) {
 }
 
 /**
- * Main Parametric Box Generator (Phase 1 + Phase 2)
+ * Generate Layer C03 Assembly Witness Marks for matching mating edges
+ */
+function generateAssemblyWitnessMarks(panelId, W, H, hasTop = true, isLivingHinge = false) {
+  const marks = [];
+  const inset = 5.0;
+
+  switch (panelId) {
+    case 'bottom':
+      marks.push({ type: 'label', text: 'S:FRONT', x: W * 0.5, y: inset + 1 });
+      marks.push({ type: 'label', text: 'N:BACK',  x: W * 0.5, y: H - inset - 1 });
+      marks.push({ type: 'label', text: 'W:LEFT',  x: inset + 2, y: H * 0.5 });
+      marks.push({ type: 'label', text: 'E:RIGHT', x: W - inset - 2, y: H * 0.5 });
+      break;
+
+    case 'front':
+      marks.push({ type: 'label', text: 'S:BOT', x: W * 0.5, y: inset + 1 });
+      marks.push({ type: 'label', text: 'W:L',   x: inset + 2, y: H * 0.5 });
+      marks.push({ type: 'label', text: 'E:R',   x: W - inset - 2, y: H * 0.5 });
+      if (hasTop) marks.push({ type: 'label', text: 'N:TOP', x: W * 0.5, y: H - inset - 1 });
+      break;
+
+    case 'back':
+      if (isLivingHinge) {
+        marks.push({ type: 'label', text: 'S:BOT', x: W * 0.5, y: inset + 1 });
+        marks.push({ type: 'label', text: 'W:L',   x: inset + 2, y: inset * 4 });
+        marks.push({ type: 'label', text: 'E:R',   x: W - inset - 2, y: inset * 4 });
+        marks.push({ type: 'label', text: 'TOP:FRONT', x: W * 0.5, y: H - inset - 1 });
+      } else {
+        marks.push({ type: 'label', text: 'S:BOT', x: W * 0.5, y: inset + 1 });
+        marks.push({ type: 'label', text: 'W:R',   x: inset + 2, y: H * 0.5 });
+        marks.push({ type: 'label', text: 'E:L',   x: W - inset - 2, y: H * 0.5 });
+        if (hasTop) marks.push({ type: 'label', text: 'N:TOP', x: W * 0.5, y: H - inset - 1 });
+      }
+      break;
+
+    case 'left':
+      marks.push({ type: 'label', text: 'BOT',   x: W * 0.5, y: inset + 1 });
+      marks.push({ type: 'label', text: 'BACK',  x: inset + 2, y: H * 0.4 });
+      marks.push({ type: 'label', text: 'FRONT', x: W - inset - 2, y: H * 0.4 });
+      break;
+
+    case 'right':
+      marks.push({ type: 'label', text: 'BOT',   x: W * 0.5, y: inset + 1 });
+      marks.push({ type: 'label', text: 'FRONT', x: inset + 2, y: H * 0.4 });
+      marks.push({ type: 'label', text: 'BACK',  x: W - inset - 2, y: H * 0.4 });
+      break;
+
+    case 'top':
+      marks.push({ type: 'label', text: 'S:FRONT', x: W * 0.5, y: inset + 1 });
+      marks.push({ type: 'label', text: 'N:BACK',  x: W * 0.5, y: H - inset - 1 });
+      marks.push({ type: 'label', text: 'W:LEFT',  x: inset + 2, y: H * 0.5 });
+      marks.push({ type: 'label', text: 'E:RIGHT', x: W - inset - 2, y: H * 0.5 });
+      break;
+  }
+
+  return marks;
+}
+
+/**
+ * Main Parametric Box Generator (Phase 1, 2, 3A & 3B)
  */
 export function generateParametricBox(params) {
   const {
@@ -556,8 +648,8 @@ export function generateParametricBox(params) {
     depth = 100,
     height = 70,
     dimensionMode = 'outer',
-    boxStyle = 'closed',       // 'closed' | 'open' | 'hinged-top' | 'living-hinge'
-    jointType = 'finger',      // 'finger' | 'tslot'
+    boxStyle = 'closed',
+    jointType = 'finger',
     hardwareId = 'M3',
     thickness = 2.92,
     kerf = 0.14,
@@ -566,15 +658,17 @@ export function generateParametricBox(params) {
     dividersX = 0,
     dividersY = 0,
     thumbNotch = true,
-    // Phase 2: Living Hinge parameters
-    hingePattern = 'straight', // 'straight' | 'wave' | 'diamond'
+    // Phase 2 Living Hinge & Cutouts
+    hingePattern = 'straight',
     hingeRadius = 18,
     hingeColSpacing = 2.2,
     hingeBridgeGap = 3.2,
     hingeSlitsPerCol = 3,
     materialCategory = 'Plywood',
-    // Phase 2: User-placed panel cutouts array
     panelCutouts = [],
+    // Phase 3B Features
+    dogboneRelief = false,
+    assemblyMarks = true,
     bedWidth = 600,
     bedHeight = 400,
     partSpacing = 5,
@@ -597,10 +691,8 @@ export function generateParametricBox(params) {
   const innerD = outerD - 2 * t;
   const innerH = outerH - (hasTop ? 2 * t : t);
 
-  // Per-edge path offset delta = kerf/2 + fitInterference/4
   const kerfDelta = (Number(kerf) * 0.5) + (Number(fitInterference) * 0.25);
 
-  // Compute Living Hinge Physics (always computed so UI can preview or use when boxStyle === 'living-hinge')
   const clampedHingeR = Math.min(Math.min(outerH, outerD) * 0.48, Math.max(t * 2.5, Number(hingeRadius)));
   const hingePhysics = calculateLivingHingePhysics({
     bendRadius: clampedHingeR,
@@ -616,7 +708,6 @@ export function generateParametricBox(params) {
 
   const panels = [];
 
-  // Helper to collect user-placed cutouts targeting a given panel id
   const getCustomCutoutsForPanel = (panelId, delta) => {
     const matching = panelCutouts.filter(c => c.panelId === panelId);
     const holes = [];
@@ -650,7 +741,8 @@ export function generateParametricBox(params) {
           W, H, t, fingerWidth, edgesConfig,
           kerfDelta,
           isTSlot,
-          hardware
+          hardware,
+          dogboneRelief
         });
     const nominal = customBuildFn
       ? customBuildFn(0)
@@ -658,13 +750,13 @@ export function generateParametricBox(params) {
           W, H, t, fingerWidth, edgesConfig,
           kerfDelta: 0,
           isTSlot,
-          hardware
+          hardware,
+          dogboneRelief: false
         });
 
     const extraCompHoles = extraHolesFn ? extraHolesFn(kerfDelta) : [];
     const extraNomHoles = extraHolesFn ? extraHolesFn(0) : [];
 
-    // User-placed panel cutouts from Phase 2 Cutout Library
     const userComp = getCustomCutoutsForPanel(id, kerfDelta);
     const userNom = getCustomCutoutsForPanel(id, 0);
 
@@ -683,6 +775,10 @@ export function generateParametricBox(params) {
     if (livingHingeData) {
       cutLengthMm += livingHingeData.cutLengthMm;
     }
+
+    const witnessMarks = assemblyMarks
+      ? generateAssemblyWitnessMarks(id, W, H, hasTop, isLivingHinge)
+      : [];
 
     return {
       id,
@@ -706,6 +802,7 @@ export function generateParametricBox(params) {
           y: livingHingeData ? livingHingeData.meta.straightBackH * 0.5 : H * 0.5
         },
         ...scoreAnnotations,
+        ...witnessMarks,
         ...userComp.scoreLabels
       ],
       cutLengthMm,
@@ -713,7 +810,6 @@ export function generateParametricBox(params) {
     };
   };
 
-  // Divider X and Y positions
   const divXPositions = [];
   if (dividersX > 0) {
     const stepX = innerW / (dividersX + 1);
@@ -734,7 +830,7 @@ export function generateParametricBox(params) {
   const divFloorLugWidth = Math.min(innerD * 0.35, Math.max(t * 3, 16));
   const divFloorLugWidthX = Math.min(innerW * 0.35, Math.max(t * 3, 16));
 
-  // 1. BOTTOM PANEL (outerW × outerD)
+  // 1. BOTTOM PANEL
   panels.push(
     createPanelRecord({
       id: 'bottom',
@@ -769,7 +865,7 @@ export function generateParametricBox(params) {
     })
   );
 
-  // 2. FRONT PANEL (outerW × outerH)
+  // 2. FRONT PANEL
   panels.push(
     createPanelRecord({
       id: 'front',
@@ -803,9 +899,6 @@ export function generateParametricBox(params) {
   );
 
   if (isLivingHinge) {
-    // LIVING HINGE ENCLOSURE TOPOLOGY:
-    // - LEFT & RIGHT walls get a rounded R top-back corner
-    // - BACK + LIVING HINGE + TOP are merged into a single continuous WRAP-LID panel!
     const straightBackH = Math.max(t * 4, outerH - clampedHingeR);
     const straightTopD = Math.max(t * 4, outerD - clampedHingeR);
     const wrapTotalH = straightBackH + hingePhysics.arcLength + straightTopD;
@@ -817,7 +910,6 @@ export function generateParametricBox(params) {
       physics: hingePhysics
     });
 
-    // Continuous WRAP-LID panel (id = 'back' so back cutouts attach naturally, plus 'top' cutouts shifted onto lid section!)
     panels.push(
       createPanelRecord({
         id: 'back',
@@ -836,7 +928,8 @@ export function generateParametricBox(params) {
             kerfDelta: delta,
             isTSlot,
             hardware,
-            thumbNotch
+            thumbNotch,
+            dogboneRelief
           }),
         extraHolesFn: (delta) => {
           const mortises = [];
@@ -846,7 +939,6 @@ export function generateParametricBox(params) {
           for (const xPos of divXPositions) {
             mortises.push(makeRectHole(outerW - xPos, centerY, slotThick, lugH));
           }
-          // Also include any cutouts assigned to 'top' shifted into the top lid region!
           const topCutouts = getCustomCutoutsForPanel('top', delta);
           for (const h of topCutouts.holes) {
             const shiftY = straightBackH + hingePhysics.arcLength;
@@ -893,7 +985,6 @@ export function generateParametricBox(params) {
       })
     );
 
-    // LEFT Wall with rounded R top-back corner
     panels.push(
       createPanelRecord({
         id: 'left',
@@ -911,7 +1002,8 @@ export function generateParametricBox(params) {
             fingerWidth,
             kerfDelta: delta,
             isTSlot,
-            hardware
+            hardware,
+            dogboneRelief
           }),
         extraHolesFn: (delta) => {
           const mortises = [];
@@ -930,7 +1022,6 @@ export function generateParametricBox(params) {
       })
     );
 
-    // RIGHT Wall with rounded R top-back corner
     panels.push(
       createPanelRecord({
         id: 'right',
@@ -948,7 +1039,8 @@ export function generateParametricBox(params) {
             fingerWidth,
             kerfDelta: delta,
             isTSlot,
-            hardware
+            hardware,
+            dogboneRelief
           }),
         extraHolesFn: (delta) => {
           const mortises = [];
@@ -967,7 +1059,7 @@ export function generateParametricBox(params) {
       })
     );
   } else {
-    // STANDARD RIGID BACK, LEFT, RIGHT, TOP PANELS
+    // RIGID BACK, LEFT, RIGHT, TOP PANELS
     panels.push(
       createPanelRecord({
         id: 'back',
@@ -1087,7 +1179,7 @@ export function generateParametricBox(params) {
     }
   }
 
-  // 7. INTERNAL DIVIDERS (X-Axis & Y-Axis Egg-Crate Grid)
+  // 7. INTERNAL DIVIDERS
   const buildDividerContour = ({ span, heightVal, floorLugW, wallLugH, crossSlots, slotFromTop, delta }) => {
     const totalW = span + 2 * t;
     const divH = isLivingHinge ? Math.max(t * 3, heightVal - clampedHingeR * 0.35) : heightVal;
@@ -1280,6 +1372,8 @@ export function generateParametricBox(params) {
       totalCutTimeSec,
       totalFasteners,
       cutoutCount: panelCutouts.length,
+      dogboneRelief,
+      assemblyMarks,
       hardwareSpec: isTSlot ? hardware.label : 'None (Self-locking Finger Joints)',
       materialUtilizationPct: nesting.utilizationPct,
       fitsOnBed: nesting.fitsOnBed

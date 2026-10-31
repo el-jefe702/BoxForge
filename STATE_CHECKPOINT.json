@@ -59,8 +59,8 @@
     {
       "id": "phase_3b_dogbones_and_witness_marks",
       "title": "Phase 3B: Dogbone Corner Reliefs & Layer C03 Edge-Matching Witness Marks",
-      "status": "PENDING",
-      "targetFiles": [
+      "status": "DONE",
+      "files": [
         "src/geometry/parametricCore.js",
         "src/main.js",
         "index.html",

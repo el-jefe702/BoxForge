@@ -53,7 +53,7 @@
         <div class="flex items-center gap-2">
           <span class="font-bold tracking-tight text-white text-sm">BoxForge Pro</span>
           <span class="text-[10px] uppercase tracking-wider font-mono font-semibold px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-            Phase 3A: Kerf Wizard &amp; .lbrn2 Dual Kerf
+            Phase 3B: Dogbones &amp; Assembly Marks
           </span>
         </div>
         <p class="text-[11px] text-slate-400 hidden sm:block">
@@ -145,11 +145,11 @@
         <div class="grid grid-cols-2 gap-2">
           <div class="space-y-1">
             <label class="text-[11px] font-medium text-slate-300">Joint Fit Preset</label>
-            <select id="select-fit" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-sky-500"></select>
+            <select id="select-fit" class="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-sky-500"></select>
           </div>
           <div class="space-y-1">
             <label class="text-[11px] font-medium text-slate-300">.lbrn2 Kerf Mode</label>
-            <select id="select-kerf-mode" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-sky-500">
+            <select id="select-kerf-mode" class="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-sky-500">
               <option value="baked" selected>Baked CAD Offset</option>
               <option value="lightburn-layer">LightBurn Layer Tag</option>
             </select>
@@ -179,7 +179,7 @@
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="block text-[11px] font-medium text-slate-300 mb-1">Enclosure Style</label>
-            <select id="select-box-style" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-100">
+            <select id="select-box-style" class="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-100">
               <option value="living-hinge" selected>Living-Hinge Curved Lid</option>
               <option value="closed">6-Sided Closed Box</option>
               <option value="open">5-Sided Open Bin</option>
@@ -188,7 +188,7 @@
           </div>
           <div>
             <label class="block text-[11px] font-medium text-slate-300 mb-1">Joinery System</label>
-            <select id="select-joint-type" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-100">
+            <select id="select-joint-type" class="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-100">
               <option value="finger" selected>Finger Joints</option>
               <option value="tslot">T-Slot + Captive Nut</option>
             </select>
@@ -198,6 +198,18 @@
         <div id="row-hardware" class="hidden space-y-1">
           <label class="text-[11px] font-medium text-amber-300">T-Slot Fastener Standard</label>
           <select id="select-hardware" class="w-full bg-slate-900 border border-amber-500/40 rounded px-2.5 py-1.5 text-xs text-slate-100"></select>
+        </div>
+
+        <!-- Phase 3B: Dogbones & Assembly Marks Checkboxes -->
+        <div class="grid grid-cols-2 gap-2 pt-1">
+          <label class="flex items-center gap-2 cursor-pointer bg-slate-900/80 p-2 rounded border border-slate-800 hover:border-slate-700">
+            <input id="chk-dogbone" type="checkbox" class="rounded bg-slate-950 border-slate-700 text-sky-500 focus:ring-0" />
+            <span class="text-[11px] text-slate-300 font-medium select-none">Dogbone Reliefs</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer bg-slate-900/80 p-2 rounded border border-slate-800 hover:border-slate-700">
+            <input id="chk-witness-marks" type="checkbox" checked class="rounded bg-slate-950 border-slate-700 text-sky-500 focus:ring-0" />
+            <span class="text-[11px] text-slate-300 font-medium select-none">Assembly Marks</span>
+          </label>
         </div>
 
         <div class="space-y-2 pt-0.5">
@@ -293,7 +305,7 @@
         <div class="grid grid-cols-5 gap-1.5">
           <div class="col-span-2">
             <label class="block text-[10px] text-slate-400 mb-0.5">Target Face</label>
-            <select id="select-cutout-panel" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-100">
+            <select id="select-cutout-panel" class="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-100">
               <option value="front" selected>FRONT</option>
               <option value="back">BACK / WRAP</option>
               <option value="left">LEFT</option>
@@ -304,7 +316,7 @@
           </div>
           <div class="col-span-3">
             <label class="block text-[10px] text-slate-400 mb-0.5">Hardware / Port Template</label>
-            <select id="select-cutout-template" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-100"></select>
+            <select id="select-cutout-template" class="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-100"></select>
           </div>
         </div>
 
