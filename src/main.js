@@ -1,7 +1,8 @@
 /**
- * BoxForge Pro — Phase 1 & Phase 2 Main Controller
+ * BoxForge Pro — Phase 1, Phase 2 & Phase 3A Main Controller
  * Connects Parametric Core, Living Hinge Calculator, Hardware Panel Cutout Studio,
- * 3D Kinematic Fold Viewport, 2D Laser Sheet Canvas, and LightBurn Exporter.
+ * 1-Minute Kerf Calibration Wizard Modal, 3D Kinematic Fold Viewport,
+ * 2D Laser Sheet Canvas, and Dual-Mode LightBurn Exporter.
  */
 
 import { LASER_MACHINES, MATERIALS, FIT_PRESETS, TSLOT_HARDWARE } from './presets.js';
@@ -10,6 +11,7 @@ import { CUTOUT_TEMPLATES } from './geometry/cutoutLibrary.js';
 import { generateParametricBox } from './geometry/parametricCore.js';
 import { BoxScene3D } from './viewport/scene3D.js';
 import { LaserSheet2D } from './viewport/sheet2D.js';
+import { KerfWizardModal } from './ui/kerfWizardModal.js';
 import {
   generateLightBurnLbrn2,
   generateKerfCalibrationCombLbrn2,
@@ -37,6 +39,7 @@ class BoxForgeApp {
       kerf: 0.14,
       fitInterference: 0.04,
       fingerWidth: 14,
+      kerfMode: 'baked',          // 'baked' | 'lightburn-layer'
 
       // Phase 2: Living Hinge parameters
       hingePattern: 'straight',
@@ -100,6 +103,7 @@ class BoxForgeApp {
     this._initDOMRefs();
     this._populateSelectPresets();
     this._initViewports();
+    this._initKerfWizard();
     this._bindEvents();
     this.recompute(true);
     this._renderCutoutList();
@@ -111,6 +115,7 @@ class BoxForgeApp {
       machineSelect: document.getElementById('select-machine'),
       materialSelect: document.getElementById('select-material'),
       fitSelect: document.getElementById('select-fit'),
+      selectKerfMode: document.getElementById('select-kerf-mode'),
       boxStyleSelect: document.getElementById('select-box-style'),
       jointTypeSelect: document.getElementById('select-joint-type'),
       hardwareSelect: document.getElementById('select-hardware'),
@@ -191,7 +196,8 @@ class BoxForgeApp {
       selectedPartTitle: document.getElementById('selected-part-title'),
       selectedPartMeta: document.getElementById('selected-part-meta'),
 
-      // Export buttons
+      // Export buttons & Wizard trigger
+      btnOpenKerfWizard: document.getElementById('btn-open-kerf-wizard'),
       btnExportLbrn2: document.getElementById('btn-export-lbrn2'),
       btnExportSvg: document.getElementById('btn-export-svg'),
       btnExportComb: document.getElementById('btn-export-comb')
@@ -234,12 +240,34 @@ class BoxForgeApp {
     });
   }
 
+  _initKerfWizard() {
+    this.kerfWizard = new KerfWizardModal({
+      onApplyCalibration: ({ thickness, kerf, kerfMode }) => {
+        this.state.thickness = thickness;
+        this.state.kerf = kerf;
+        this.state.kerfMode = kerfMode;
+
+        this.el.inputThickness.value = thickness;
+        this.el.inputKerf.value = kerf;
+        if (this.el.selectKerfMode) this.el.selectKerfMode.value = kerfMode;
+
+        this.recompute(false);
+      },
+      onDownloadComb: () => {
+        const xml = generateKerfCalibrationCombLbrn2(
+          this._getCurrentMaterial(),
+          this._getCurrentMachine()
+        );
+        downloadFile(`BoxForge_Kerf_Calibration_Comb_${this.state.thickness}mm.lbrn2`, xml, 'application/xml');
+      }
+    });
+  }
+
   _onPanelSelected(panel, source) {
     const id = panel ? panel.id : null;
     if (source !== '3d') this.scene3D.selectPanel(id, false);
     if (source !== '2d') this.sheet2D.selectPanel(id);
 
-    // Sync target face dropdown in Panel Cutout Studio if it's one of the main enclosure faces
     if (id && ['front', 'back', 'left', 'right', 'bottom', 'top'].includes(id)) {
       this.el.selectCutoutPanel.value = id;
     }
@@ -288,6 +316,18 @@ class BoxForgeApp {
       }
       this.recompute(false);
     });
+
+    if (this.el.selectKerfMode) {
+      this.el.selectKerfMode.addEventListener('change', (e) => {
+        this.state.kerfMode = e.target.value;
+      });
+    }
+
+    if (this.el.btnOpenKerfWizard) {
+      this.el.btnOpenKerfWizard.addEventListener('click', () => {
+        this.kerfWizard.open(this.state.thickness, this.state.kerf, this.state.kerfMode);
+      });
+    }
 
     this.el.boxStyleSelect.addEventListener('change', (e) => {
       this.state.boxStyle = e.target.value;
@@ -449,10 +489,11 @@ class BoxForgeApp {
       const xml = generateLightBurnLbrn2(
         this.currentModel,
         this._getCurrentMaterial(),
-        this._getCurrentMachine()
+        this._getCurrentMachine(),
+        { kerfMode: this.state.kerfMode }
       );
       const { outerW, outerD, outerH, thickness } = this.currentModel.dimensions;
-      const fname = `BoxForge_${Math.round(outerW)}x${Math.round(outerD)}x${Math.round(outerH)}_${thickness}mm.lbrn2`;
+      const fname = `BoxForge_${Math.round(outerW)}x${Math.round(outerD)}x${Math.round(outerH)}_${thickness}mm_${this.state.kerfMode}.lbrn2`;
       downloadFile(fname, xml, 'application/xml');
     });
 
@@ -472,9 +513,6 @@ class BoxForgeApp {
     });
   }
 
-  /**
-   * Add a new hardware cutout to the selected panel face
-   */
   _addCutoutFromSelector() {
     const panelId = this.el.selectCutoutPanel.value;
     const tplId = this.el.selectCutoutTemplate.value;
@@ -638,7 +676,6 @@ class BoxForgeApp {
       })
       .join('');
 
-    // Bind dynamic item controls
     container.querySelectorAll('[data-action]').forEach((btn) => {
       btn.addEventListener('click', () => {
         const id = btn.dataset.id;
@@ -836,7 +873,6 @@ class BoxForgeApp {
     const secs = Math.round(totalCutTimeSec % 60);
     this.el.hudCutTime.textContent = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
 
-    // Living Hinge telemetry card
     if (hp) {
       this.el.hudHingeArc.textContent = `${hp.arcLength.toFixed(1)} mm (R=${hp.bendRadius.toFixed(0)}mm @ 90°)`;
       this.el.hudHingeStrain.textContent = `${hp.numCols} cols | ε=${(hp.estimatedStrain * 100).toFixed(1)}% / ${(hp.maxStrain * 100).toFixed(1)}%`;

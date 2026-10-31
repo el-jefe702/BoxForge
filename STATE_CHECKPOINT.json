@@ -47,8 +47,8 @@
     {
       "id": "phase_3a_kerf_calibration_wizard",
       "title": "Phase 3A: Interactive 1-Minute Kerf Calibration Wizard Modal & Dual .lbrn2 Kerf Mode",
-      "status": "PENDING",
-      "targetFiles": [
+      "status": "DONE",
+      "files": [
         "src/ui/kerfWizardModal.js",
         "src/exporters/exportEngine.js",
         "src/main.js",

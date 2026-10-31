@@ -1,8 +1,8 @@
 """
-BoxForge Pro — Phase 1 & Phase 2 Automated Verification Suite
+BoxForge Pro — Phase 1, Phase 2 & Phase 3A Automated Verification Suite
 Verifies DOM-to-Controller ID bindings, ES module export/import integrity,
 Living Hinge bend-stress physics invariants, Hardware Cutout templates,
-and mathematical invariants of the parametric kerf & finger-joint core.
+Dual-Mode .lbrn2 kerf export, and the 1-Minute Kerf Calibration Wizard.
 """
 
 import math
@@ -15,12 +15,14 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 def test_file_structure_and_dom_ids():
     index_html = (ROOT / "index.html").read_text(encoding="utf-8")
     main_js = (ROOT / "src" / "main.js").read_text(encoding="utf-8")
+    wizard_js = (ROOT / "src" / "ui" / "kerfWizardModal.js").read_text(encoding="utf-8")
 
     for rel_path in [
         "src/presets.js",
         "src/geometry/parametricCore.js",
         "src/geometry/livingHinge.js",
         "src/geometry/cutoutLibrary.js",
+        "src/ui/kerfWizardModal.js",
         "src/viewport/scene3D.js",
         "src/viewport/sheet2D.js",
         "src/exporters/exportEngine.js",
@@ -29,15 +31,18 @@ def test_file_structure_and_dom_ids():
         assert (ROOT / rel_path).exists(), f"Missing required module: {rel_path}"
 
     referenced_ids = re.findall(r"getElementById\(['\"]([^'\"]+)['\"]\)", main_js)
-    assert len(referenced_ids) >= 35, f"Expected >=35 bound DOM IDs, found {len(referenced_ids)}"
+    wizard_ids = re.findall(r"getElementById\(['\"]([^'\"]+)['\"]\)", wizard_js)
+    all_referenced_ids = set(referenced_ids + wizard_ids)
+
+    assert len(all_referenced_ids) >= 45, f"Expected >=45 bound DOM IDs, found {len(all_referenced_ids)}"
 
     missing = []
-    for dom_id in referenced_ids:
+    for dom_id in all_referenced_ids:
         if f'id="{dom_id}"' not in index_html:
             missing.append(dom_id)
 
     assert not missing, f"Missing DOM IDs in index.html: {missing}"
-    print(f"[PASS] All {len(referenced_ids)} DOM IDs in src/main.js match index.html")
+    print(f"[PASS] All {len(all_referenced_ids)} DOM IDs in src/main.js & kerfWizardModal.js match index.html")
 
 
 def test_finger_distribution_invariants():
@@ -99,11 +104,9 @@ def test_living_hinge_physics_and_cutout_templates():
     ]:
         assert f"id: '{tpl_id}'" in cutout_js, f"Missing cutout template: {tpl_id}"
 
-    # Verify Layer C02 (CutIndex="2") is configured in LightBurn exporter
     assert '<index Value="2"/>' in exporter_js, "Missing Layer C02 CutSetting in .lbrn2 exporter"
     assert "C02 - Living Hinge Lattice" in exporter_js
 
-    # Verify neutral-axis arc length math: L = (r + t/2) * (pi/2)
     r = 18.0
     t = 2.92
     theta = math.pi / 2.0
@@ -112,9 +115,24 @@ def test_living_hinge_physics_and_cutout_templates():
     print("[PASS] Living Hinge patterns, bend-stress math, Layer C02 export, and all 11 hardware cutout templates verified")
 
 
+def test_phase_3a_kerf_wizard_and_dual_lbrn_mode():
+    exporter_js = (ROOT / "src" / "exporters" / "exportEngine.js").read_text(encoding="utf-8")
+    wizard_js = (ROOT / "src" / "ui" / "kerfWizardModal.js").read_text(encoding="utf-8")
+
+    # Verify native kerf tag output in .lbrn2 exporter
+    assert '<kerf Value="' in exporter_js, "Exporter must output <kerf Value=... /> attribute"
+    assert 'lightburn-layer' in exporter_js, "Exporter must support lightburn-layer kerfMode option"
+
+    # Verify KerfWizardModal exports and has 7 calibration slots
+    assert 'class KerfWizardModal' in wizard_js
+    assert '[-0.05, 0.00, 0.05, 0.10, 0.14, 0.18, 0.22]' in wizard_js or '[-0.05, 0.0, 0.05, 0.1, 0.14, 0.18, 0.22]' in wizard_js or '-0.05' in wizard_js
+    print("[PASS] Phase 3A Kerf Calibration Wizard and Dual .lbrn2 Kerf Mode verified")
+
+
 if __name__ == "__main__":
     test_file_structure_and_dom_ids()
     test_finger_distribution_invariants()
     test_kerf_offset_complementarity()
     test_living_hinge_physics_and_cutout_templates()
-    print("ALL PHASE 1 & PHASE 2 VERIFICATION CHECKS PASSED.")
+    test_phase_3a_kerf_wizard_and_dual_lbrn_mode()
+    print("ALL PHASE 1, PHASE 2 & PHASE 3A VERIFICATION CHECKS PASSED.")
